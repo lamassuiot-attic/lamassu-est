@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"github.com/globalsign/est"
 	"log"
 	"net/http"
@@ -30,7 +29,7 @@ func (ca *VaultService) CACerts(ctx context.Context, aps string, req *http.Reque
 	req.Header.Add("Authorization", bearer)
 
 	var certs []Cert
-	resp, err := ca.client.do(req, &certs)
+	_, err = ca.client.do(req, &certs)
 	if err != nil {
 		log.Println("Error on response.\n[ERROR] -", err)
 	}
@@ -49,7 +48,6 @@ func (ca *VaultService) CACerts(ctx context.Context, aps string, req *http.Reque
 		filteredCerts = append(filteredCerts, crt)
 	}
 
-	fmt.Println(resp.Status)
 	return []*x509.Certificate{}, err
 }
 

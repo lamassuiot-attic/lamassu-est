@@ -1,62 +1,203 @@
 package main
 
 import (
-	"flag"
-	"github.com/go-kit/kit/log/level"
-	"github.com/lamassuiot/lamassu-est/secrets/ca/vault"
-	_ "log"
+	_ "context"
+	"crypto/tls"
+	"crypto/x509"
+	_ "encoding/pem"
+	"fmt"
+	"github.com/globalsign/est"
+	"github.com/globalsign/pemfile"
+	_ "io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	_ "github.com/globalsign/est"
-	"vault"
+	"github.com/lamassuiot/lamassu-est/cmd/server/configs"
+	"github.com/lamassuiot/lamassu-est/pkg/client"
 )
 
-func envString(key, def string) string {
-	if env := os.Getenv(key); env != "" {
-		return env
+const (
+	vaultAddr    = "https://vault.lamassu.zpd.ikerlan.es:8200"
+	caCert = "/home/xpb/Desktop/ikl/lamassu/lamassu-est/cmd/server/certs/vault.crt"
+	roleId = "9865a0bd-0975-482d-9561-5d8016c2b71d"
+	secretId = "49a86de2-efbb-069f-9ac5-889019248788"
+	caName = "Lamassu-Root-CA1-RSA4096"
+
+	defaultListenAddr   = "https://localhost:8087/v1"
+	configFilePath = "//home/xpb/Desktop/ikl/lamassu/lamassu-est/cmd/server/configs/config.json"
+	)
+
+/*
+func (vaultClient *vaultClient) SignCertificate(csr *x509.CertificateRequest) ([]byte, error) {
+	signPath := vaultClient.caName + "/sign/enroller"
+	csrBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr.Raw})
+	options := map[string]interface {} {
+		"csr": string(csrBytes),
+		"common_name": csr.Subject.CommonName,
 	}
-	return def
-}
+	data, err := vaultClient.client.Logical().Write(signPath, options)
+	if err != nil {
+		return nil, err
+	}
+	certData := data.Data["certificate"]
+	certPEMBlock, _ := pem.Decode([]byte(certData.(string)))
+	if certPEMBlock == nil || certPEMBlock.Type != "CERTIFICATE" {
+		err = errors.New("failed to decode PEM block containing certificate")
+		return nil, err
+	}
+
+	return certPEMBlock.Bytes, nil
+}*/
+
 
 func main() {
 
-	var (
-		flVersion           = flag.Bool("version", false, "prints version information")
-		flHost              = flag.String("host", envString("SCEP_HOST", "scep"), "host where service is started")
-		flPort              = flag.String("port", envString("SCEP_HTTP_LISTEN_PORT", "8080"), "port to listen on")
-		flDepotPath         = flag.String("depot", envString("SCEP_FILE_DEPOT", "depot"), "path to ca folder")
-		flCAPass            = flag.String("capass", envString("SCEP_CA_PASS", ""), "password for the ca.key")
-		flVaultAddress      = flag.String("vaultaddress", envString("SCEP_VAULT_ADDRESS", "vault"), "Vault address")
-		flVaultCA           = flag.String("vaultca", envString("SCEP_VAULT_CA", "Lamassu-Root-CA1-RSA4096"), "Vault CA")
-		flVaultCACert       = flag.String("vaultcacert", envString("SCEP_VAULT_CA_CERT", ""), "Vault CA certificate")
-		flRoleID            = flag.String("roleid", envString("SCEP_ROLE_ID", ""), "Vault RoleID")
-		flSecretID          = flag.String("secretid", envString("SCEP_SECRET_ID", ""), "Vault SecretID")
-		flHomePath          = flag.String("homepath", envString("SCEP_HOME_PATH", ""), "home path")
-		flDBName            = flag.String("dbname", envString("SCEP_DB_NAME", "ca_store"), "DB name")
-		flDBUser            = flag.String("dbuser", envString("SCEP_DB_USER", "scep"), "DB user")
-		flDBPassword        = flag.String("dbpass", envString("SCEP_DB_PASSWORD", ""), "DB password")
-		flDBHost            = flag.String("dbhost", envString("SCEP_DB_HOST", ""), "DB host")
-		flDBPort            = flag.String("dbport", envString("SCEP_DB_PORT", ""), "DB port")
-		flConsulProtocol    = flag.String("consulprotocol", envString("SCEP_CONSULPROTOCOL", ""), "Consul server protocol")
-		flConsulHost        = flag.String("consulhost", envString("SCEP_CONSULHOST", ""), "Consul host")
-		flConsulPort        = flag.String("consulport", envString("SCEP_CONSULPORT", ""), "Consul port")
-		flConsulCA          = flag.String("consulca", envString("SCEP_CONSULCA", ""), "Consul CA path")
-		flClDuration        = flag.String("crtvalid", envString("SCEP_CERT_VALID", "365"), "validity for new client certificates in days")
-		flClAllowRenewal    = flag.String("allowrenew", envString("SCEP_CERT_RENEW", "14"), "do not allow renewal until n days before expiry, set to 0 to always allow")
-		flChallengePassword = flag.String("challenge", envString("SCEP_CHALLENGE_PASSWORD", ""), "enforce a challenge password")
-		flCSRVerifierExec   = flag.String("csrverifierexec", envString("SCEP_CSR_VERIFIER_EXEC", ""), "will be passed the CSRs for verification")
-		flDebug             = flag.Bool("debug", envBool("SCEP_LOG_DEBUG"), "enable debug logging")
-		flLogJSON           = flag.Bool("log-json", envBool("SCEP_LOG_JSON"), "output JSON logs")
-	)
-
-	var caSecrets casecrets.CASecrets
-	{
-		caSecrets, err = vault.NewVaultSecrets(*flVaultAddress, *flRoleID, *flSecretID, *flVaultCA, *flVaultCACert, lginfo)
-		if err != nil {
-			level.Error(lginfo).Log("err", err, "msg", "Could not start connection with CA Vault Secret Engine")
-			os.Exit(1)
-		}
+	/*vaultClient, err := vault.Init(vaultAddr, caName, caCert, roleId, secretId)
+	if err != nil {
+		log.Println(err)
 	}
-	level.Info(lginfo).Log("msg", "Connection established with CA secret engine")
 
+	err = vaultClient.Login()
+	if err != nil {
+		log.Println(err)
+	}*/
+
+	var ca *client.VaultService
+	cl := client.NewClient(nil)
+	cl.BaseURL, _ = url.Parse(defaultListenAddr)
+	ca = cl.Vault
+
+
+	/*ctx, cancel := context.WithTimeout(context.Background(), time.Second * 60)
+	defer cancel()
+
+	data, err := ioutil.ReadFile("/home/xpb/Desktop/ikl/lamassu/lamassu-est/cmd/server/certs/lalala.csr")
+	if err != nil {
+		log.Fatalf("failed to parse EST server certificate request: %v", err)
+	}
+
+	b, _ := pem.Decode(data)
+	var csr *x509.CertificateRequest
+	if b == nil {
+		csr, err = x509.ParseCertificateRequest(data)
+	} else {
+		csr, err = x509.ParseCertificateRequest(b.Bytes)
+	}
+	if err != nil {
+		log.Fatalf("failed to parse EST server certificate request: %v", err)
+	}
+
+	cert, err := ca.Enroll(ctx, csr, "", nil)*/
+
+
+	/***********************************************************************/
+
+	// Load and process configuration.
+	cfg, err := configs.ConfigFromFile(configFilePath)
+	if err != nil {
+		log.Fatalf("failed to read configuration file: %v", err)
+	}
+
+	var listenAddr = defaultListenAddr
+	var serverKey interface{}
+	var serverCerts []*x509.Certificate
+	var clientCACerts []*x509.Certificate
+
+	serverKey, err = pemfile.ReadPrivateKey(cfg.TLS.Key)
+	if err != nil {
+		log.Fatalf("failed to read server private key   file: %v", err)
+	}
+
+	serverCerts, err = pemfile.ReadCerts(cfg.TLS.Certs)
+	if err != nil {
+		log.Fatalf("failed to read server certificates from file: %v", err)
+	}
+
+	for _, certPath := range cfg.TLS.ClientCAs {
+		certs, err := pemfile.ReadCerts(certPath)
+		if err != nil {
+			log.Fatalf("failed to read client CA certificates from file: %v", err)
+		}
+		clientCACerts = append(clientCACerts, certs...)
+	}
+
+	listenAddr = cfg.TLS.ListenAddr
+
+	var tlsCerts [][]byte
+	for i := range serverCerts {
+		tlsCerts = append(tlsCerts, serverCerts[i].Raw)
+	}
+
+	clientCAs := x509.NewCertPool()
+	for _, cert := range clientCACerts {
+		clientCAs.AddCert(cert)
+	}
+
+	tlsCfg := &tls.Config{
+		MinVersion:       tls.VersionTLS12,
+		CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		ClientAuth:       tls.VerifyClientCertIfGiven,
+		Certificates: []tls.Certificate{
+			{
+				Certificate: tlsCerts,
+				PrivateKey:  serverKey,
+				Leaf:        serverCerts[0],
+			},
+		},
+		ClientCAs: clientCAs,
+	}
+
+	// Create server mux.TODO: Fill nils
+	r, err := est.NewRouter(&est.ServerConfig{
+		CA:             ca,
+		Logger:         nil,
+		AllowedHosts:   cfg.AllowedHosts,
+		Timeout:        time.Duration(cfg.Timeout) * time.Second,
+		RateLimit:      cfg.RateLimit,
+		CheckBasicAuth: nil,
+	})
+	if err != nil {
+		log.Fatalf("failed to create new EST router: %v", err)
+	}
+
+	// Create and start server.
+	s := &http.Server{
+		Addr:      listenAddr,
+		Handler:   r,
+		TLSConfig: tlsCfg,
+	}
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP)
+
+	//logger.Infof("Starting EST server FOR NON-PRODUCTION USE ONLY")
+
+	go func() {
+		err := s.ListenAndServeTLS("", "")
+		if err != nil {
+			// TODO: Log
+		}
+	}()
+
+	// Wait for signal.
+	got := <-stop
+
+	// Shutdown server.
+	//logger.Infof("Closing EST server with signal %v", got)
+
+	err = s.Close()
+	if err != nil {
+		return
+	}
+
+	/***********************************************************************/
+
+
+	fmt.Println(err, r, got) //TODO delete
+	
 }
