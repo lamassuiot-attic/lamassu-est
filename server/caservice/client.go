@@ -1,4 +1,4 @@
-package client
+package caservice
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ func NewClient(httpClient *http.Client) *Client {
 		httpClient = http.DefaultClient
 	}
 	client := &Client { httpClient: httpClient }
-	client.Vault = &VaultService{client: client }
+	client.Vault = &VaultService{Client: client }
 
 	return client
 }

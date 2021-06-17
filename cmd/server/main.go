@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/globalsign/est"
 	"github.com/globalsign/pemfile"
+	configs2 "github.com/lamassuiot/lamassu-est/server/configs"
 	_ "io/ioutil"
 	"log"
 	"net/http"
@@ -17,8 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lamassuiot/lamassu-est/cmd/server/configs"
-	"github.com/lamassuiot/lamassu-est/pkg/client"
+	"github.com/lamassuiot/lamassu-est/server/caservice"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	caName = "Lamassu-Root-CA1-RSA4096"
 
 	defaultListenAddr   = "https://localhost:8087/v1"
-	configFilePath = "//home/xpb/Desktop/ikl/lamassu/lamassu-est/cmd/server/configs/config.json"
+	configFilePath = "//home/xpb/Desktop/ikl/lamassu/lamassu-est/cmd/server/configs/configs.json"
 	)
 
 /*
@@ -40,7 +40,7 @@ func (vaultClient *vaultClient) SignCertificate(csr *x509.CertificateRequest) ([
 		"csr": string(csrBytes),
 		"common_name": csr.Subject.CommonName,
 	}
-	data, err := vaultClient.client.Logical().Write(signPath, options)
+	data, err := vaultClient.caservice.Logical().Write(signPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +67,8 @@ func main() {
 		log.Println(err)
 	}*/
 
-	var ca *client.VaultService
-	cl := client.NewClient(nil)
+	var ca *caservice.VaultService
+	cl := caservice.NewClient(nil)
 	cl.BaseURL, _ = url.Parse(defaultListenAddr)
 	ca = cl.Vault
 
@@ -98,7 +98,7 @@ func main() {
 	/***********************************************************************/
 
 	// Load and process configuration.
-	cfg, err := configs.ConfigFromFile(configFilePath)
+	cfg, err := configs2.ConfigFromFile(configFilePath)
 	if err != nil {
 		log.Fatalf("failed to read configuration file: %v", err)
 	}
@@ -121,7 +121,7 @@ func main() {
 	for _, certPath := range cfg.TLS.ClientCAs {
 		certs, err := pemfile.ReadCerts(certPath)
 		if err != nil {
-			log.Fatalf("failed to read client CA certificates from file: %v", err)
+			log.Fatalf("failed to read caservice CA certificates from file: %v", err)
 		}
 		clientCACerts = append(clientCACerts, certs...)
 	}

@@ -1,4 +1,4 @@
-package client
+package caservice
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 type VaultService struct {
-	client *Client
+	Client *Client
 }
 
 func (ca *VaultService) CACerts(ctx context.Context, aps string, req *http.Request, ) ([]*x509.Certificate, error) {
@@ -22,14 +22,14 @@ func (ca *VaultService) CACerts(ctx context.Context, aps string, req *http.Reque
 
 	var bearer = "Bearer " + "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJDLWxGZU9OY1d2ZnBHYWVXeUppREYxeVFlOS1uU0VYVkYyQnZkV2dJckhzIn0.eyJleHAiOjE3MDk0NjgyNzgsImlhdCI6MTYyMzA2ODI3OCwianRpIjoiMDQ2ZGMyZGMtODkwZS00YTIzLWEwOGEtNTgxODNhNmI5ZmE2IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5sYW1hc3N1LnpwZC5pa2VybGFuLmVzOjg0NDMvYXV0aC9yZWFsbXMvbGFtYXNzdSIsImF1ZCI6ImFjY291bnQiLCJzdWIiOiIyNmJmYTExMC1mN2ExLTQ1ODctODNmNS1mZTgwOGQ1OThhYWEiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJsYW1hc3N1LWVucm9sbGVyIiwic2Vzc2lvbl9zdGF0ZSI6Ijc1ODU2NGNiLTM4NDMtNGNlOS04YzI5LTc0NDIwN2VhNjg5MCIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1sYW1hc3N1Iiwib2ZmbGluZV9hY2Nlc3MiLCJhZG1pbiIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJlbnJvbGxlciJ9.RqjUhSTbwNDbVhRhKewBJFucU0KlAcUXQl9Jp9ZosOu5dRH_iAb5C700qIMpDgXHyv5KuaSrZY9zmpUqs5XIik1da6Q9Jzlly-dqkpuITjf3MsOkjL2o8JBFE_3BrIVVWWDN9Esr7V7b-oZrH1Lbqx3V36TSCAKh5OGprIbJsKQIPi-eSaZzelf7zf-IPO2uyDMEqOsrPCTxmGWjZEtp9UQu2mvkshiT73YAIY5JKbw_1N1G14cV_Wyc78ov2Fl3KDZFVyVrC7ym5HS-p8_afDe650ycOj3hnmxkksf7D7fPutCeoK-2-yIZxBrUl8uqZTI3zGIdqd4_XkeP9vuNPg"
 
-	req, err := ca.client.newRequest("GET", url, nil)
+	req, err := ca.Client.newRequest("GET", url, nil)
 	if err != nil {
 		log.Println("Error on creating request.\n[ERROR] -", err)
 	}
 	req.Header.Add("Authorization", bearer)
 
-	var certs []Cert
-	_, err = ca.client.do(req, &certs)
+	var certs []CACertsResponse
+	_, err = ca.Client.do(req, &certs)
 	if err != nil {
 		log.Println("Error on response.\n[ERROR] -", err)
 	}
@@ -73,7 +73,7 @@ func (ca *VaultService) TPMEnroll(ctx context.Context, csr *x509.CertificateRequ
 }
 
 
-type Cert struct {
+type CACertsResponse struct {
 	// The status of the CA
 	// required: true
 	// example: issued | expired
@@ -150,26 +150,5 @@ type Cert struct {
 
 	ValidFrom string
 	ValidTO   string
-}
-
-type CAImport struct {
-	PEMBundle string `json:"pem_bundle"`
-	TTL       int    `json:"ttl"`
-}
-
-// CAs represents a list of CAs with minimum information
-// swagger:model
-type Certs struct {
-	Certs []Cert `json:"certs"`
-}
-
-type Secrets interface {
-	GetCAs() (Certs, error)
-	CreateCA(caName string, ca Cert) error
-	ImportCA(caName string, caImport CAImport) error
-	DeleteCA(caName string) error
-
-	GetIssuedCerts(caName string) (Certs, error)
-	DeleteCert(caName string, serialNumber string) error
 }
 
