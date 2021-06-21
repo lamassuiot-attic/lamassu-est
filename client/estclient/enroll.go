@@ -11,13 +11,13 @@ var (
 	oidSubjectAltName = asn1.ObjectIdentifier{2, 5, 29, 17}
 )
 
-// enroll requests a new certificate.
-func enroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
+// Enroll requests a new certificate.
+func Enroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
 	return enrollCommon(csr, true)
 }
 
-// reenroll renews an existing certificate.
-func reenroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
+// Reenroll renews an existing certificate.
+func Reenroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
 	return enrollCommon(csr, false)
 }
 
