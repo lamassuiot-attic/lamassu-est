@@ -1,0 +1,15 @@
+{
+  "server": "localhost:8080",
+  "client_certificates": "/home/xpb/Desktop/LAMASSU/ca_certs/localhost.crt",
+  "explicit_anchor": "/home/xpb/Desktop/LAMASSU/ca_certs/localhost.crt",
+  "implicit_anchor": "/home/xpb/Desktop/LAMASSU/ca_certs/ca.crt",
+  "additional_path_segment": "",
+  "additional_headers": {
+    "Certificate-Template": "my-template",
+    "Bit-Size": "3072"
+  },
+  "host_header": "localhost",
+  "username": "someuser",
+  "password": "somepass",
+  "private_key": {"Path":"/home/xpb/Desktop/LAMASSU/ca_certs/localhost.key"}
+}
