@@ -13,12 +13,12 @@ var (
 
 // Enroll requests a new certificate.
 func Enroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
-	return enrollCommon(csr, true)
+	return enrollCommon(csr, false)
 }
 
 // Reenroll renews an existing certificate.
 func Reenroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
-	return enrollCommon(csr, false)
+	return enrollCommon(csr, true)
 }
 
 // enrollCommon services both enroll and reenroll.

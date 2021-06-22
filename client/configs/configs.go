@@ -82,7 +82,7 @@ type tpmKey struct {
 // NewConfig Wrapper for different configurations
 func NewConfig(filename string) (*Config, error) {
 	var cfg = Config{
-		timeout: 1000000000000000000,
+		timeout: 1000000000000000000, //TODO: fix this
 	}
 
 	// Get working directory.
