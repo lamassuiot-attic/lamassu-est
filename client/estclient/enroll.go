@@ -24,7 +24,7 @@ func Reenroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error
 // enrollCommon services both enroll and reenroll.
 func enrollCommon(csr *x509.CertificateRequest, renew bool) (cert *x509.Certificate, error error) {
 
-	/configStr, err := configs.NewConfigEnv("est")
+	configStr, err := configs.NewConfigEnv("est")
 	if err != nil {
 		return nil, fmt.Errorf("failed to laod env variables %v", err)
 	}
