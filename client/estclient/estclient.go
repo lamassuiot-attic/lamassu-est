@@ -20,15 +20,9 @@ func NewClient(config *configs.Config) (*est.Client, error) {
 	client := est.Client{
 		Host:                  config.Server,
 		AdditionalPathSegment: config.APS,
-		AdditionalHeaders:     config.AdditionalHeaders,
 		ExplicitAnchor:        config.ExplicitAnchor,
-		ImplicitAnchor:        config.ImplicitAnchor,
-		HostHeader:            config.HostHeader,
 		PrivateKey:            config.PrivateKey,
 		Certificates:          config.Certificates,
-		Username:              config.Username,
-		Password:              config.Password,
-		InsecureSkipVerify:    false,
 	}
 
 	// Host is the only required field for all operations.

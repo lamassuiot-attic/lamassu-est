@@ -1,52 +1,16 @@
 package estclient
 
 import (
+	"crypto/x509"
 	"fmt"
 	"github.com/globalsign/pemfile"
 	"github.com/lamassuiot/lamassu-est/client/configs"
 	"io"
 )
 
-func Cacerts(w io.Writer, crtfilename string) error {
+func WriteCertsFile(writer io.Writer, certName string, certs []*x509.Certificate) error {
 
-	//TODO: Load it from environment variables
-	filename := "/home/xpb/Desktop/ikl/lamassu/lamassu-est/client/configs/config.json"
-
-	cfg, err := configs.NewConfig(filename)
-	if err != nil {
-		return fmt.Errorf("failed to make EST client: %v", err)
-	}
-
-	client, err := NewClient(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to make EST client: %v", err)
-	}
-
-	ctx, cancel := cfg.MakeContext()
-	defer cancel()
-
-	certs, err := client.CACerts(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get CA certificates: %v", err)
-	}
-
-	/*
-		if cfg.FlagWasPassed(rootOutFlag) {
-			var root *x509.Certificate
-			for _, cert := range certs {
-				if bytes.Equal(cert.RawSubject, cert.RawIssuer) && cert.CheckSignatureFrom(cert) == nil {
-					root = cert
-					break
-				}
-			}
-			if root == nil {
-				return errors.New("failed to find a root certificate in CA certificates")
-			}
-			certs = []*x509.Certificate{root}
-		}
-	*/
-
-	out, closeFunc, err := MaybeRedirect(w, crtfilename, 0666)
+	out, closeFunc, err := MaybeRedirect(writer, certName, 0666)
 	if err != nil {
 		return err
 	}
@@ -57,4 +21,32 @@ func Cacerts(w io.Writer, crtfilename string) error {
 	}
 
 	return nil
+}
+
+func GetCaCerts() ([]*x509.Certificate, error) {
+
+	configStr, err := configs.NewConfigEnv("est")
+	if err != nil {
+		return nil, fmt.Errorf("failed to laod env variables %v", err)
+	}
+
+	cfg, err := configs.NewConfig(configStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make EST client's configurations: %v", err)
+	}
+
+	client, err := NewClient(&cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make EST client: %v", err)
+	}
+
+	ctx, cancel := cfg.MakeContext()
+	defer cancel()
+
+	certs, err := client.CACerts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CA certificates: %v", err)
+	}
+
+	return certs, nil
 }
