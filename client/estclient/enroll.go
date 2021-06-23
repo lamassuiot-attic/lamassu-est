@@ -11,35 +11,37 @@ var (
 	oidSubjectAltName = asn1.ObjectIdentifier{2, 5, 29, 17}
 )
 
-// enroll requests a new certificate.
-func enroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
-	return enrollCommon(csr, true)
+// Enroll requests a new certificate.
+func Enroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
+	return enrollCommon(csr, false)
 }
 
-// reenroll renews an existing certificate.
-func reenroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
-	return enrollCommon(csr, false)
+// Reenroll renews an existing certificate.
+func Reenroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
+	return enrollCommon(csr, true)
 }
 
 // enrollCommon services both enroll and reenroll.
 func enrollCommon(csr *x509.CertificateRequest, renew bool) (cert *x509.Certificate, error error) {
 
-	//TODO: Load it from environment variables
-	filename := "/home/xpb/Desktop/ikl/lamassu/lamassu-est/client/configs/config.json"
-
-	cfg, err := configs.NewConfig(filename)
+	/configStr, err := configs.NewConfigEnv("est")
 	if err != nil {
-		return nil, fmt.Errorf("failed to make EST client: %v", err)
+		return nil, fmt.Errorf("failed to laod env variables %v", err)
 	}
 
-	client, err := NewClient(cfg)
+	cfg, err := configs.NewConfig(configStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make EST client's configurations: %v", err)
+	}
+
+	client, err := NewClient(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make EST client: %v", err)
 	}
 
 	ctx, cancel := cfg.MakeContext()
 	defer cancel()
-
+	
 	if renew {
 		cert, err = client.Reenroll(ctx, csr)
 		return cert, err
@@ -48,4 +50,3 @@ func enrollCommon(csr *x509.CertificateRequest, renew bool) (cert *x509.Certific
 		return cert, err
 	}
 }
-

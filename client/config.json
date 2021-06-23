@@ -1,0 +1,7 @@
+{
+  "server": "localhost:8080",
+  "client_certificates": "/home/xpb/Desktop/LAMASSU/ca_certs/localhost.crt",
+  "explicit_anchor": "/home/xpb/Desktop/LAMASSU/ca_certs/localhost.crt",
+  "additional_path_segment": "Lamassu-DMS",
+  "private_key": "/home/xpb/Desktop/LAMASSU/ca_certs/localhost.key"
+}
