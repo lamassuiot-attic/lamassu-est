@@ -18,7 +18,7 @@ func main() {
 	fmt.Println(a, b, c, d)
 
 	// Test Get CA certificates
-	caCerts, err := estclient.GetCaCerts()
+	caCerts, err := estclient.GetCaCerts("Lamassu-DMS")
 	if err != nil {
 		fmt.Println(err)
 	}

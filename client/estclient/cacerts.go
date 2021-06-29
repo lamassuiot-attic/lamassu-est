@@ -23,7 +23,7 @@ func WriteCertsFile(writer io.Writer, certName string, certs []*x509.Certificate
 	return nil
 }
 
-func GetCaCerts() ([]*x509.Certificate, error) {
+func GetCaCerts(caName string) ([]*x509.Certificate, error) {
 
 	configStr, err := configs.NewConfigEnv("est")
 	if err != nil {
@@ -34,6 +34,8 @@ func GetCaCerts() ([]*x509.Certificate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to make EST client's configurations: %v", err)
 	}
+
+	cfg.APS = caName
 
 	client, err := NewClient(&cfg)
 	if err != nil {

@@ -12,17 +12,17 @@ var (
 )
 
 // Enroll requests a new certificate.
-func Enroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
-	return enrollCommon(csr, false)
+func Enroll(csr *x509.CertificateRequest, caName string) (cert *x509.Certificate, error error) {
+	return enrollCommon(csr, caName,false)
 }
 
 // Reenroll renews an existing certificate.
-func Reenroll(csr *x509.CertificateRequest) (cert *x509.Certificate, error error) {
-	return enrollCommon(csr, true)
+func Reenroll(csr *x509.CertificateRequest, caName string) (cert *x509.Certificate, error error) {
+	return enrollCommon(csr, caName,true)
 }
 
 // enrollCommon services both enroll and reenroll.
-func enrollCommon(csr *x509.CertificateRequest, renew bool) (cert *x509.Certificate, error error) {
+func enrollCommon(csr *x509.CertificateRequest, caName string, renew bool) (cert *x509.Certificate, error error) {
 
 	configStr, err := configs.NewConfigEnv("est")
 	if err != nil {
@@ -33,6 +33,8 @@ func enrollCommon(csr *x509.CertificateRequest, renew bool) (cert *x509.Certific
 	if err != nil {
 		return nil, fmt.Errorf("failed to make EST client's configurations: %v", err)
 	}
+
+	cfg.APS = caName
 
 	client, err := NewClient(&cfg)
 	if err != nil {
