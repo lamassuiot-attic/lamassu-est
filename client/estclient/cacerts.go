@@ -4,7 +4,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/globalsign/pemfile"
-	"github.com/lamassuiot/lamassu-est/client/configs"
+	"github.com/lamassuiot/lamassu-est/configs"
 	"io"
 )
 
@@ -25,7 +25,7 @@ func WriteCertsFile(writer io.Writer, certName string, certs []*x509.Certificate
 
 func GetCaCerts(caName string) ([]*x509.Certificate, error) {
 
-	configStr, err := configs.NewConfigEnv("est")
+	configStr, err := configs.NewConfigEnvClient("est")
 	if err != nil {
 		return nil, fmt.Errorf("failed to laod env variables %v", err)
 	}

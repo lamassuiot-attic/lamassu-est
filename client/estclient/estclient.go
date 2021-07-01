@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globalsign/est"
-	"github.com/lamassuiot/lamassu-est/client/configs"
+	"github.com/lamassuiot/lamassu-est/configs"
 	"io"
 	"os"
 )
@@ -16,7 +16,7 @@ var (
 )
 
 // NewClient builds an EST client from a configuration file, overriding the values with command line options, if applicable.
-func NewClient(config *configs.Config) (*est.Client, error) {
+func NewClient(config *configs.ConfigClient) (*est.Client, error) {
 	client := est.Client{
 		Host:                  config.Server,
 		AdditionalPathSegment: config.APS,

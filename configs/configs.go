@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// Config Configuration parameters for the client
-type Config struct {
+// ConfigClient Configuration parameters for the client
+type ConfigClient struct {
 	Server         string
 	APS            string
 	Certificates   []*x509.Certificate
@@ -23,8 +23,8 @@ type Config struct {
 	Timeout        time.Duration
 }
 
-// ConfigStr Read JSON or environment variables
-type ConfigStr struct {
+// ConfigStrClient Read JSON or environment variables
+type ConfigStrClient struct {
 	Server             string `json:"server"`
 	APS                string `json:"additional_path_segment"`
 	ExplicitAnchorPath string `json:"explicit_anchor"`
@@ -32,14 +32,30 @@ type ConfigStr struct {
 	CertificatesPath   string `json:"client_certificates"`
 }
 
+// ConfigServer  contains the EST server configuration.
+type ConfigServer struct {
+	ListenAddr string
+	Certs      string
+	PrivateKey string
+	ClientCA   string
+}
+
+// ConfigStrServer  contains the EST server configuration in string format.
+type ConfigStrServer struct {
+	ListenAddr string `json:"listen_address"`
+	Certs      string `json:"certificate"`
+	PrivateKey string `json:"private_key"`
+	ClientCA   string `json:"client_cas"` //TODO: make it an array
+}
+
 // NewConfigJson Wrapper for different configurations
-func NewConfigJson(filename string) (ConfigStr, error) {
-	var cfg ConfigStr
+func NewConfigJson(filename string) (ConfigStrClient, error) {
+	var cfg ConfigStrClient
 
 	// Get working directory.
 	wd, err := os.Getwd()
 	if err != nil {
-		return ConfigStr{}, fmt.Errorf("failed to get working directory: %v", err)
+		return ConfigStrClient{}, fmt.Errorf("failed to get working directory: %v", err)
 	}
 
 	// If filename is not an absolute path, look for it in a set sequence of locations.
@@ -65,27 +81,27 @@ func NewConfigJson(filename string) (ConfigStr, error) {
 	// Read the file and parse the configuration.
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return ConfigStr{}, fmt.Errorf("failed to open configuration file: %v", err)
+		return ConfigStrClient{}, fmt.Errorf("failed to open configuration file: %v", err)
 	}
 
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return ConfigStr{}, fmt.Errorf("failed to unmarshal configuration file: %v", err)
+		return ConfigStrClient{}, fmt.Errorf("failed to unmarshal configuration file: %v", err)
 	}
 
 	return cfg, nil
 }
 
-func NewConfigEnv(prefix string) (ConfigStr, error) {
+func NewConfigEnv(prefix string) (ConfigStrClient, error) {
 
-	var cfg ConfigStr
+	var cfg ConfigStrClient
 	err := envconfig.Process(prefix, &cfg)
 	if err != nil {
-		return ConfigStr{}, fmt.Errorf("failed to load configuration from env variables: %v", err)
+		return ConfigStrClient{}, fmt.Errorf("failed to load configuration from env variables: %v", err)
 	}
 	return cfg, nil
 }
 
-func NewConfig(cfgStr ConfigStr) (Config, error) {
+func NewConfig(cfgStr ConfigStrClient) (Config, error) {
 
 	var cfg Config
 

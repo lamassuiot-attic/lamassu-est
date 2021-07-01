@@ -4,7 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"fmt"
-	"github.com/lamassuiot/lamassu-est/client/configs"
+	configs2 "github.com/lamassuiot/lamassu-est/configs"
 )
 
 var (
@@ -24,12 +24,12 @@ func Reenroll(csr *x509.CertificateRequest, caName string) (cert *x509.Certifica
 // enrollCommon services both enroll and reenroll.
 func enrollCommon(csr *x509.CertificateRequest, caName string, renew bool) (cert *x509.Certificate, error error) {
 
-	configStr, err := configs.NewConfigEnv("est")
+	configStr, err := configs2.NewConfigEnvClient("est")
 	if err != nil {
 		return nil, fmt.Errorf("failed to laod env variables %v", err)
 	}
 
-	cfg, err := configs.NewConfig(configStr)
+	cfg, err := configs2.NewConfig(configStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make EST client's configurations: %v", err)
 	}

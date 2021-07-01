@@ -2,18 +2,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/lamassuiot/lamassu-est/client/configs"
 	"github.com/lamassuiot/lamassu-est/client/estclient"
+	configs2 "github.com/lamassuiot/lamassu-est/configs"
 )
 
 func main() {
 
 	// Test Configuration
-	a, _ := configs.NewConfigJson("/home/xpb/Desktop/ikl/lamassu/lamassu-est/client/config.json")
-	b, _ := configs.NewConfigEnv("est")
+	a, _ := configs2.NewConfigJson("/home/xpb/Desktop/ikl/lamassu/lamassu-est/client/config.json")
+	b, _ := configs2.NewConfigEnvClient("est")
 
-	c, _ := configs.NewConfig(a)
-	d, _ := configs.NewConfig(b)
+	c, _ := configs2.NewConfig(a)
+	d, _ := configs2.NewConfig(b)
 
 	fmt.Println(a, b, c, d)
 
