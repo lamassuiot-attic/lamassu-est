@@ -32,14 +32,6 @@ type ConfigStrClient struct {
 	CertificatesPath   string `json:"client_certificates"`
 }
 
-// ConfigServer  contains the EST server configuration.
-type ConfigServer struct {
-	ListenAddr string
-	Certs      string
-	PrivateKey string
-	ClientCA   string
-}
-
 // ConfigStrServer  contains the EST server configuration in string format.
 type ConfigStrServer struct {
 	ListenAddr string `json:"listen_address"`
@@ -91,19 +83,33 @@ func NewConfigJson(filename string) (ConfigStrClient, error) {
 	return cfg, nil
 }
 
-func NewConfigEnv(prefix string) (ConfigStrClient, error) {
+func NewConfigEnvClient(prefix string) (ConfigStrClient, error) {
 
 	var cfg ConfigStrClient
+
 	err := envconfig.Process(prefix, &cfg)
 	if err != nil {
 		return ConfigStrClient{}, fmt.Errorf("failed to load configuration from env variables: %v", err)
 	}
+
 	return cfg, nil
 }
 
-func NewConfig(cfgStr ConfigStrClient) (Config, error) {
+func NewConfigEnvServer(prefix string) (ConfigStrServer, error) {
 
-	var cfg Config
+	var cfg ConfigStrServer
+
+	err := envconfig.Process(prefix, &cfg)
+	if err != nil {
+		return ConfigStrServer{}, fmt.Errorf("failed to load configuration from env variables: %v", err)
+	}
+
+	return cfg, nil
+}
+
+func NewConfig(cfgStr ConfigStrClient) (ConfigClient, error) {
+
+	var cfg ConfigClient
 
 	cfg.Timeout = 1000000000 //TODO: hardcoded for the moment
 	cfg.Server = cfgStr.Server
@@ -127,7 +133,7 @@ func NewConfig(cfgStr ConfigStrClient) (Config, error) {
 
 			certs, err := pemfile.ReadCerts(*anchor.field)
 			if err != nil {
-				return Config{}, fmt.Errorf("failed to read %s anchor file: %v", anchor.name, err)
+				return ConfigClient{}, fmt.Errorf("failed to read %s anchor file: %v", anchor.name, err)
 			}
 
 			for _, cert := range certs {
@@ -139,7 +145,7 @@ func NewConfig(cfgStr ConfigStrClient) (Config, error) {
 	if cfgStr.CertificatesPath != "" {
 		certs, err := pemfile.ReadCerts(cfgStr.CertificatesPath)
 		if err != nil {
-			return Config{}, fmt.Errorf("failed to read client certificates: %v", err)
+			return ConfigClient{}, fmt.Errorf("failed to read client certificates: %v", err)
 		}
 		cfg.Certificates = certs
 	}
@@ -147,7 +153,7 @@ func NewConfig(cfgStr ConfigStrClient) (Config, error) {
 	if cfg.PrivateKey != "" {
 		privateKey, err := pemfile.ReadPrivateKeyWithPasswordFunc(cfgStr.PrivateKeyPath, nil)
 		if err != nil {
-			return Config{}, fmt.Errorf("failed to read private key: %v", err)
+			return ConfigClient{}, fmt.Errorf("failed to read private key: %v", err)
 		}
 		cfg.PrivateKey = privateKey
 	}
@@ -156,6 +162,6 @@ func NewConfig(cfgStr ConfigStrClient) (Config, error) {
 }
 
 // MakeContext returns a context with the configured timeout, and its cancel function.
-func (cfg *Config) MakeContext() (context.Context, context.CancelFunc) {
+func (cfg *ConfigClient) MakeContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), cfg.Timeout)
 }

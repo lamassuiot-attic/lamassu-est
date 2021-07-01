@@ -14,10 +14,17 @@ var (
 	errCerts    = errors.New("error parsing server certificates")
 	errPrivateKey = errors.New("error parsing private key")
 	errClientCA = errors.New("error parsing client CA")
+	errConfig = errors.New("error getting configuration")
 )
 
 // NewServer  builds an EST server from a configuration file and a CA.
-func NewServer(config *configs.ConfigStrServer, ca est.CA) (*http.Server, error) {
+func NewServer(ca est.CA) (*http.Server, error) {
+
+	config, err := configs.NewConfigEnvServer("est")
+
+	if err != nil {
+		return nil, errConfig
+	}
 
 	serverCerts, err := pemfile.ReadCerts(config.Certs)
 	if err != nil {
