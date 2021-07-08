@@ -7,6 +7,7 @@ import (
 	"github.com/globalsign/est"
 	"github.com/globalsign/pemfile"
 	"github.com/lamassuiot/lamassu-est/configs"
+	"log"
 	"net/http"
 )
 
@@ -44,11 +45,14 @@ func NewServer(ca est.CA) (*http.Server, error) {
 
 	// Handle client certs
 	var clientCACerts []*x509.Certificate
-	certs, err := pemfile.ReadCerts(config.ClientCA)
-	if err != nil {
-		return nil, errClientCA
+	for _, certPath := range config.ClientCAs {
+		certs, err := pemfile.ReadCerts(certPath)
+		if err != nil {
+			log.Fatalf("failed to read client CA certificates from file: %v", err)
+		}
+		clientCACerts = append(clientCACerts, certs...)
 	}
-	clientCACerts = append(clientCACerts, certs...)
+
 	clientCAs := x509.NewCertPool()
 	for _, cert := range clientCACerts {
 		clientCAs.AddCert(cert)

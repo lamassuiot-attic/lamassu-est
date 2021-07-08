@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const ClientCaPath = "/certs/clientcas.json"
+
 // ConfigClient Configuration parameters for the client
 type ConfigClient struct {
 	Server         string
@@ -34,10 +36,10 @@ type ConfigStrClient struct {
 
 // ConfigStrServer  contains the EST server configuration in string format.
 type ConfigStrServer struct {
-	ListenAddr string `json:"listen_address"`
-	Certs      string `json:"certificate"`
-	PrivateKey string `json:"private_key"`
-	ClientCA   string `json:"client_cas"` //TODO: make it an array
+	ListenAddr string   `json:"listen_address,omitempty"`
+	Certs      string   `json:"certificate,omitempty"`
+	PrivateKey string   `json:"private_key,omitempty"`
+	ClientCAs  []string `json:"client_cas"` //TODO: make it an array
 }
 
 // NewConfigJson Wrapper for different configurations
@@ -104,6 +106,10 @@ func NewConfigEnvServer(prefix string) (ConfigStrServer, error) {
 		return ConfigStrServer{}, fmt.Errorf("failed to load configuration from env variables: %v", err)
 	}
 
+	err = configFromFile(ClientCaPath, &cfg)
+	if err != nil {
+		return ConfigStrServer{}, err
+	}
 	return cfg, nil
 }
 
@@ -160,6 +166,20 @@ func NewConfig(cfgStr ConfigStrClient) (ConfigClient, error) {
 
 	return cfg, nil
 }
+
+func configFromFile(filename string, cfg *ConfigStrServer) (error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return  err
+	}
+
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return  err
+	}
+
+	return nil
+}
+
 
 // MakeContext returns a context with the configured timeout, and its cancel function.
 func (cfg *ConfigClient) MakeContext() (context.Context, context.CancelFunc) {

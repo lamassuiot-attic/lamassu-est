@@ -8,6 +8,7 @@ import (
 	"io"
 )
 
+
 func WriteCertsFile(writer io.Writer, certName string, certs []*x509.Certificate) error {
 
 	out, closeFunc, err := MaybeRedirect(writer, certName, 0666)
