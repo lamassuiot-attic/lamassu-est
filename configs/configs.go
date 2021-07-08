@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const ClientCaPath = "/certs/clientcas.json"
+const ClientCaPath = "/app/clientcas.json"
 
 // ConfigClient Configuration parameters for the client
 type ConfigClient struct {
