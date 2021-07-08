@@ -61,7 +61,7 @@ func NewServer(ca est.CA) (*http.Server, error) {
 	tlsConfig := &tls.Config{
 		MinVersion:       tls.VersionTLS12,
 		CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-		ClientAuth:       tls.VerifyClientCertIfGiven,
+		ClientAuth:       tls.RequireAndVerifyClientCert,
 		Certificates: []tls.Certificate{
 			{
 				Certificate: tlsCerts,
