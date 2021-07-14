@@ -16,6 +16,7 @@ var (
 	errPrivateKey = errors.New("error parsing private key")
 	errClientCA = errors.New("error parsing client CA")
 	errConfig = errors.New("error getting configuration")
+	errGetCa = errors.New("error getting CAs")
 )
 
 // NewServer  builds an EST server from a configuration file and a CA.
@@ -58,10 +59,15 @@ func NewServer(ca est.CA) (*http.Server, error) {
 		clientCAs.AddCert(cert)
 	}
 
+	extraClientCAa, err := ca.CACerts()
+	if err != nil {
+		return nil, errPrivateKey
+	}
+
 	tlsConfig := &tls.Config{
 		MinVersion:       tls.VersionTLS12,
 		CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-		ClientAuth:       tls.RequireAndVerifyClientCert,
+		ClientAuth:       tls.RequireAnyClientCert,
 		Certificates: []tls.Certificate{
 			{
 				Certificate: tlsCerts,
@@ -70,6 +76,31 @@ func NewServer(ca est.CA) (*http.Server, error) {
 			},
 		},
 		ClientCAs: clientCAs,
+	}
+
+	tlsConfig.VerifyPeerCertificate = func(certificates [][]byte, _ [][]*x509.Certificate) error {
+		certs := make([]*x509.Certificate, len(certificates))
+		for i, asn1Data := range certificates {
+			cert, err := x509.ParseCertificate(asn1Data)
+			if err != nil {
+				return errors.New("tls: failed to parse certificate from server: " + err.Error())
+			}
+			certs[i] = cert
+		}
+		opts := x509.VerifyOptions{
+			Roots:         tlsConfig.RootCAs, // On the server side, use config.ClientCAs.
+			DNSName:       tlsConfig.ServerName,
+			Intermediates: x509.NewCertPool(),
+			// On the server side, set KeyUsages to ExtKeyUsageClientAuth. The
+			// default value is appropriate for clients side verification.
+			// KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		}
+		for _, cert := range certs[1:] {
+			opts.Intermediates.AddCert(cert)
+		}
+		_, err := certs[0].Verify(opts)
+
+		return err
 	}
 
 	serverConfig := est.ServerConfig{

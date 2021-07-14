@@ -1,7 +1,5 @@
 {
   "client_cas": [
-    "/path/to/first/client/CA/root/certificate.pem",
-    "/path/to/second/client/CA/root/certificate.pem",
-    "/path/to/third/client/CA/root/certificate.pem"
+    "/home/xpb/Desktop/LAMASSU/ca_certs/ca.crt"
   ]
 }

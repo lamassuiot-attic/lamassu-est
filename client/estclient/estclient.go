@@ -53,3 +53,7 @@ func MaybeRedirect(w io.Writer, filename string, perm os.FileMode) (io.Writer, f
 
 	return f, f.Close, nil
 }
+
+/*func ChangeClientCert(client *est.Client) error {
+	client.Certificates =
+}*/
