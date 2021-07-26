@@ -4,8 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"github.com/globalsign/est"
 	"github.com/globalsign/pemfile"
+	"github.com/lamassuiot/lamassu-est/client/estclient"
 	"github.com/lamassuiot/lamassu-est/configs"
 	"log"
 	"net/http"
@@ -59,7 +61,28 @@ func NewServer(ca est.CA) (*http.Server, error) {
 		clientCAs.AddCert(cert)
 	}
 
-	extraClientCAa, err := ca.CACerts()
+
+	/****** EST CLIENT for verifying CAs *****/
+
+	configStr, err := configs.NewConfigEnvClient("est")
+	if err != nil {
+		fmt.Errorf("failed to laod env variables %v", err)
+	}
+	cfg, err := configs.NewConfig(configStr)
+	if err != nil {
+		fmt.Errorf("failed to make EST client's configurations: %v", err)
+	}
+
+	 estClient, err := estclient.NewClient(cfg)
+
+	if err != nil {
+		fmt.Errorf("failed to make EST client: %v", err)
+	}
+
+	/******************************************/
+
+
+
 	if err != nil {
 		return nil, errPrivateKey
 	}
@@ -75,7 +98,7 @@ func NewServer(ca est.CA) (*http.Server, error) {
 				Leaf:        serverCerts[0],
 			},
 		},
-		ClientCAs: clientCAs,
+		//ClientCAs: clientCAs, // This is filled later
 	}
 
 	tlsConfig.VerifyPeerCertificate = func(certificates [][]byte, _ [][]*x509.Certificate) error {
@@ -87,18 +110,31 @@ func NewServer(ca est.CA) (*http.Server, error) {
 			}
 			certs[i] = cert
 		}
+
+
+		caCerts, err := estClient.GetCAs("")
+		if err != nil {
+			return errors.New("tls: failed to parse certificate from server: " + err.Error())
+		}
+
+		for _, caCert := range caCerts {
+			clientCAs.AddCert(caCert)
+		}
+
+		tlsConfig.ClientCAs = clientCAs
+
 		opts := x509.VerifyOptions{
-			Roots:         tlsConfig.RootCAs, // On the server side, use config.ClientCAs.
+			Roots:         tlsConfig.ClientCAs, // On the server side, use config.RootCAs.
 			DNSName:       tlsConfig.ServerName,
 			Intermediates: x509.NewCertPool(),
 			// On the server side, set KeyUsages to ExtKeyUsageClientAuth. The
 			// default value is appropriate for clients side verification.
-			// KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		}
 		for _, cert := range certs[1:] {
 			opts.Intermediates.AddCert(cert)
 		}
-		_, err := certs[0].Verify(opts)
+		_, err = certs[0].Verify(opts)
 
 		return err
 	}

@@ -1,7 +1,7 @@
 package estclient
 
-
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"github.com/globalsign/est"
@@ -15,8 +15,15 @@ var (
 	errNoServer     = errors.New("EST server not specified")
 )
 
+type EstClient struct {
+	client est.Client
+	config configs.ConfigClient
+}
+
 // NewClient builds an EST client from a configuration file, overriding the values with command line options, if applicable.
-func NewClient(config *configs.ConfigClient) (*est.Client, error) {
+func NewClient(config configs.ConfigClient) (*EstClient, error) {
+	var estClient EstClient
+
 	client := est.Client{
 		Host:                  config.Server,
 		AdditionalPathSegment: config.APS,
@@ -25,12 +32,27 @@ func NewClient(config *configs.ConfigClient) (*est.Client, error) {
 		Certificates:          config.Certificates,
 	}
 
+	estClient.client = client
+	estClient.config = config
+
 	// Host is the only required field for all operations.
 	if client.Host == "" {
 		return nil, errNoServer
 	}
 
-	return &client, nil
+	return &estClient, nil
+}
+
+func (client *EstClient) GetCAs(caName string) ([]*x509.Certificate, error){
+	return getCaCerts(client, caName)
+}
+
+func (client *EstClient) Enroll(csr *x509.CertificateRequest, caName string) (cert *x509.Certificate, error error) {
+	return enroll(client, csr, caName)
+}
+
+func (client *EstClient) Reenroll(csr *x509.CertificateRequest, caName string) (cert *x509.Certificate, error error) {
+	return reenroll(client, csr, caName)
 }
 
 /*

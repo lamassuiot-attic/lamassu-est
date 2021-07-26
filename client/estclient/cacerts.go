@@ -4,7 +4,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/globalsign/pemfile"
-	"github.com/lamassuiot/lamassu-est/configs"
 	"io"
 )
 
@@ -24,29 +23,14 @@ func WriteCertsFile(writer io.Writer, certName string, certs []*x509.Certificate
 	return nil
 }
 
-func GetCaCerts(caName string) ([]*x509.Certificate, error) {
+func getCaCerts(client *EstClient, caName string) ([]*x509.Certificate, error) {
 
-	configStr, err := configs.NewConfigEnvClient("est")
-	if err != nil {
-		return nil, fmt.Errorf("failed to laod env variables %v", err)
-	}
+	client.config.APS = caName
 
-	cfg, err := configs.NewConfig(configStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make EST client's configurations: %v", err)
-	}
-
-	cfg.APS = caName
-
-	client, err := NewClient(&cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make EST client: %v", err)
-	}
-
-	ctx, cancel := cfg.MakeContext()
+	ctx, cancel := client.config.MakeContext()
 	defer cancel()
 
-	certs, err := client.CACerts(ctx)
+	certs, err := client.client.CACerts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CA certificates: %v", err)
 	}
