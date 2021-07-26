@@ -41,6 +41,7 @@ type ConfigStrServer struct {
 	Certs      string   `json:"certificate,omitempty"`
 	PrivateKey string   `json:"private_key,omitempty"`
 	ClientCAs  []string `json:"client_cas"` //TODO: make it an array
+	ClientCaPath string
 }
 
 // NewConfigJson Wrapper for different configurations
@@ -107,7 +108,7 @@ func NewConfigEnvServer(prefix string) (ConfigStrServer, error) {
 		return ConfigStrServer{}, fmt.Errorf("failed to load configuration from env variables: %v", err)
 	}
 
-	err = configFromFile(ClientCaPath, &cfg)
+	err = configFromFile(cfg.ClientCaPath, &cfg)
 	if err != nil {
 		return ConfigStrServer{}, err
 	}
