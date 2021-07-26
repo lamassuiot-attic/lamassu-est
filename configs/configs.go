@@ -13,8 +13,7 @@ import (
 	"time"
 )
 
-//const ClientCaPath = "/app/clientcas.json"
-const ClientCaPath = "/home/xpb/Desktop/ikl/lamassu/lamassu-est/clientcas.json"
+const ClientCaPath = "/app/clientcas.json"
 
 // ConfigClient Configuration parameters for the client
 type ConfigClient struct {
