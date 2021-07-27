@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"github.com/globalsign/est"
 	"github.com/globalsign/pemfile"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/lamassuiot/lamassu-ca/pkg/secrets"
 	"github.com/lamassuiot/lamassu-ca/pkg/secrets/vault"
 	"github.com/lamassuiot/lamassu-est/configs"
-	"log"
 	"net/http"
+	"os"
 )
 
 // NewServerCa  builds an EST server from a configuration file and a CA.
@@ -45,7 +47,7 @@ func NewServerCa(ca est.CA) (*http.Server, error) {
 	for _, certPath := range config.ClientCAs {
 		certs, err := pemfile.ReadCerts(certPath)
 		if err != nil {
-			log.Fatalf("failed to read client CA certificates from file: %v", err)
+			return nil, errPrivateKey
 		}
 		clientCACerts = append(clientCACerts, certs...)
 	}
@@ -63,7 +65,15 @@ func NewServerCa(ca est.CA) (*http.Server, error) {
 		fmt.Errorf("failed to laod env variables %v", err)
 	}
 
-	secretsVault, err := vault.NewVaultSecrets(configVault.VaultAddress, configVault.VaultRoleID, configVault.VaultSecretID, configVault.VaultCA, nil)
+	var logger log.Logger
+	{
+		logger = log.NewJSONLogger(os.Stdout)
+		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+		logger = log.With(logger, "caller", log.DefaultCaller)
+		logger = level.NewFilter(logger, level.AllowInfo())
+	}
+
+	secretsVault, err := vault.NewVaultSecrets(configVault.VaultAddress, configVault.VaultRoleID, configVault.VaultSecretID, configVault.VaultCA, logger)
 	if err != nil {
 		return nil, err
 	}
