@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/lamassuiot/lamassu-est/server/ca"
-	"github.com/lamassuiot/lamassu-est/server/ca/vault"
-	"github.com/lamassuiot/lamassu-est/server/estserver"
+	"github.com/lamassuiot/lamassu-est/configs"
 )
 
 func main() {
-
+/*
 	var caVault *ca.VaultService
 
 	secretsVault, err := vault.NewVaultSecrets(
@@ -24,7 +22,7 @@ func main() {
 
 	caVault = ca.NewVaultService(secretsVault)
 
-	server, err := estserver.NewServer(caVault)
+	server, err := estserver.NewServerCa(caVault)
 	if err != nil {
 		fmt.Println("Error on Server.\n[ERROR] -", err)
 	}
@@ -32,6 +30,12 @@ func main() {
 	err = server.ListenAndServeTLS("", "")
 	if err != nil {
 		fmt.Println("Error on Server.\n[ERROR] -", err)
+	}*/
+
+	configVault, err := configs.NewConfigEnvServer("ca")
+	if err != nil {
+		fmt.Errorf("failed to laod env variables %v", err)
 	}
 
+	fmt.Println(configVault)
 }

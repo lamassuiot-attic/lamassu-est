@@ -112,9 +112,11 @@ func NewConfigEnvServer(prefix string) (ConfigStrServer, error) {
 		return ConfigStrServer{}, fmt.Errorf("failed to load configuration from env variables: %v", err)
 	}
 
-	err = configFromFile(cfg.ClientCaPath, &cfg)
-	if err != nil {
-		return ConfigStrServer{}, err
+	if prefix == "est" {
+		err = configFromFile(cfg.ClientCaPath, &cfg)
+		if err != nil {
+			return ConfigStrServer{}, err
+		}
 	}
 	return cfg, nil
 }
