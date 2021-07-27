@@ -36,11 +36,16 @@ type ConfigStrClient struct {
 
 // ConfigStrServer  contains the EST server configuration in string format.
 type ConfigStrServer struct {
-	ListenAddr string   `json:"listen_address,omitempty"`
-	Certs      string   `json:"certificate,omitempty"`
-	PrivateKey string   `json:"private_key,omitempty"`
-	ClientCAs  []string `json:"client_cas"` //TODO: make it an array
+	ListenAddr   string   `json:"listen_address,omitempty"`
+	Certs        string   `json:"certificate,omitempty"`
+	PrivateKey   string   `json:"private_key,omitempty"`
+	ClientCAs    []string `json:"client_cas"`
 	ClientCaPath string
+
+	VaultAddress  string
+	VaultRoleID   string
+	VaultSecretID string
+	VaultCA       string
 }
 
 // NewConfigJson Wrapper for different configurations
@@ -168,19 +173,18 @@ func NewConfig(cfgStr ConfigStrClient) (ConfigClient, error) {
 	return cfg, nil
 }
 
-func configFromFile(filename string, cfg *ConfigStrServer) (error) {
+func configFromFile(filename string, cfg *ConfigStrServer) error {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return  err
+		return err
 	}
 
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return  err
+		return err
 	}
 
 	return nil
 }
-
 
 // MakeContext returns a context with the configured timeout, and its cancel function.
 func (cfg *ConfigClient) MakeContext() (context.Context, context.CancelFunc) {

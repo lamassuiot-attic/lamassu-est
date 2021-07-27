@@ -3,26 +3,20 @@ package estserver
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/globalsign/est"
 	"github.com/globalsign/pemfile"
-	"github.com/lamassuiot/lamassu-est/client/estclient"
+	"github.com/lamassuiot/lamassu-ca/pkg/secrets"
+	"github.com/lamassuiot/lamassu-ca/pkg/secrets/vault"
 	"github.com/lamassuiot/lamassu-est/configs"
 	"log"
 	"net/http"
 )
 
-var (
-	errCerts    = errors.New("error parsing server certificates")
-	errPrivateKey = errors.New("error parsing private key")
-	errClientCA = errors.New("error parsing client CA")
-	errConfig = errors.New("error getting configuration")
-	errGetCa = errors.New("error getting CAs")
-)
-
-// NewServer  builds an EST server from a configuration file and a CA.
-func NewServer(ca est.CA) (*http.Server, error) {
+// NewServerCa  builds an EST server from a configuration file and a CA.
+func NewServerCa(ca est.CA) (*http.Server, error) {
 
 	config, err := configs.NewConfigEnvServer("est")
 
@@ -62,21 +56,16 @@ func NewServer(ca est.CA) (*http.Server, error) {
 	}
 
 
-	/****** EST CLIENT for verifying CAs *****/
+	/****** VAULT CLIENT for verifying CAs *****/
 
-	configStr, err := configs.NewConfigEnvClient("est")
+	configVault, err := configs.NewConfigEnvServer("ca")
 	if err != nil {
 		fmt.Errorf("failed to laod env variables %v", err)
 	}
-	cfg, err := configs.NewConfig(configStr)
-	if err != nil {
-		fmt.Errorf("failed to make EST client's configurations: %v", err)
-	}
 
-	 estClient, err := estclient.NewClient(cfg)
-
+	secretsVault, err := vault.NewVaultSecrets(configVault.VaultAddress, configVault.VaultRoleID, configVault.VaultSecretID, configVault.VaultCA, nil)
 	if err != nil {
-		fmt.Errorf("failed to make EST client: %v", err)
+		return nil, err
 	}
 
 	/******************************************/
@@ -111,14 +100,23 @@ func NewServer(ca est.CA) (*http.Server, error) {
 			certs[i] = cert
 		}
 
-
-		caCerts, err := estClient.GetCAs("")
+		cas, err := secretsVault.GetCAs(secrets.AllCAs)
 		if err != nil {
-			return errors.New("tls: failed to parse certificate from server: " + err.Error())
+			return err
 		}
 
-		for _, caCert := range caCerts {
-			clientCAs.AddCert(caCert)
+		// Handle client certs
+		for _, ca := range cas.Certs {
+			block, _ := pem.Decode([]byte(ca.CRT))
+			if block == nil {
+				panic("failed to parse certificate PEM")
+			}
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				panic("failed to parse certificate: " + err.Error())
+
+			}
+			clientCAs.AddCert(cert)
 		}
 
 		tlsConfig.ClientCAs = clientCAs

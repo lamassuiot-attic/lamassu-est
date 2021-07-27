@@ -9,5 +9,5 @@ require (
 	github.com/hashicorp/vault v1.7.3
 	github.com/hashicorp/vault/api v1.1.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lamassuiot/lamassu-ca v0.0.1
+	github.com/lamassuiot/lamassu-ca v0.0.2-0.20210726092930-4ca38403343c // indirect
 )
