@@ -22,8 +22,10 @@ func reenroll(client *EstClient, csr *x509.CertificateRequest, caName string) (c
 // enrollCommon services both enroll and reenroll.
 func enrollCommon(client *EstClient, csr *x509.CertificateRequest, caName string, renew bool) (cert *x509.Certificate, error error) {
 
-	client.config.APS = caName
-	client.client.AdditionalPathSegment = caName
+	if caName != "" {
+		client.config.APS = caName
+		client.client.AdditionalPathSegment = caName
+	}
 
 	ctx, cancel := client.config.MakeContext()
 	defer cancel()
