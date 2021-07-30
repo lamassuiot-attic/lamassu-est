@@ -6,15 +6,16 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/globalsign/est"
+	"net/http"
+	"os"
+
 	"github.com/globalsign/pemfile"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/lamassuiot/est"
 	"github.com/lamassuiot/lamassu-ca/pkg/secrets"
 	"github.com/lamassuiot/lamassu-ca/pkg/secrets/vault"
 	"github.com/lamassuiot/lamassu-est/configs"
-	"net/http"
-	"os"
 )
 
 // NewServerCa  builds an EST server from a configuration file and a CA.
@@ -57,7 +58,6 @@ func NewServerCa(ca est.CA) (*http.Server, error) {
 		clientCAs.AddCert(cert)
 	}
 
-
 	/****** VAULT CLIENT for verifying CAs *****/
 
 	configVault, err := configs.NewConfigEnvServer("ca")
@@ -79,8 +79,6 @@ func NewServerCa(ca est.CA) (*http.Server, error) {
 	}
 
 	/******************************************/
-
-
 
 	if err != nil {
 		return nil, errPrivateKey
@@ -137,7 +135,7 @@ func NewServerCa(ca est.CA) (*http.Server, error) {
 			Intermediates: x509.NewCertPool(),
 			// On the server side, set KeyUsages to ExtKeyUsageClientAuth. The
 			// default value is appropriate for clients side verification.
-			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		}
 		for _, cert := range certs[1:] {
 			opts.Intermediates.AddCert(cert)
@@ -164,4 +162,3 @@ func NewServerCa(ca est.CA) (*http.Server, error) {
 
 	return s, nil
 }
-

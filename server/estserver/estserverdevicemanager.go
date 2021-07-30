@@ -5,20 +5,21 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/globalsign/est"
-	"github.com/globalsign/pemfile"
-	"github.com/lamassuiot/lamassu-est/client/estclient"
-	"github.com/lamassuiot/lamassu-est/configs"
 	"log"
 	"net/http"
+
+	"github.com/globalsign/pemfile"
+	"github.com/lamassuiot/est"
+	"github.com/lamassuiot/lamassu-est/client/estclient"
+	"github.com/lamassuiot/lamassu-est/configs"
 )
 
 var (
-	errCerts    = errors.New("error parsing server certificates")
+	errCerts      = errors.New("error parsing server certificates")
 	errPrivateKey = errors.New("error parsing private key")
-	errClientCA = errors.New("error parsing client CA")
-	errConfig = errors.New("error getting configuration")
-	errGetCa = errors.New("error getting CAs")
+	errClientCA   = errors.New("error parsing client CA")
+	errConfig     = errors.New("error getting configuration")
+	errGetCa      = errors.New("error getting CAs")
 )
 
 // NewServerDeviceManager  builds an EST server from a configuration file and a CA.
@@ -61,7 +62,6 @@ func NewServerDeviceManager(ca est.CA) (*http.Server, error) {
 		clientCAs.AddCert(cert)
 	}
 
-
 	/****** EST CLIENT for verifying CAs *****/
 
 	configStr, err := configs.NewConfigEnvClient("est")
@@ -73,15 +73,13 @@ func NewServerDeviceManager(ca est.CA) (*http.Server, error) {
 		fmt.Errorf("failed to make EST client's configurations: %v", err)
 	}
 
-	 estClient, err := estclient.NewClient(cfg)
+	estClient, err := estclient.NewClient(cfg)
 
 	if err != nil {
 		fmt.Errorf("failed to make EST client: %v", err)
 	}
 
 	/******************************************/
-
-
 
 	if err != nil {
 		return nil, errPrivateKey
@@ -128,7 +126,7 @@ func NewServerDeviceManager(ca est.CA) (*http.Server, error) {
 			Intermediates: x509.NewCertPool(),
 			// On the server side, set KeyUsages to ExtKeyUsageClientAuth. The
 			// default value is appropriate for clients side verification.
-			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		}
 		for _, cert := range certs[1:] {
 			opts.Intermediates.AddCert(cert)
@@ -155,4 +153,3 @@ func NewServerDeviceManager(ca est.CA) (*http.Server, error) {
 
 	return s, nil
 }
-

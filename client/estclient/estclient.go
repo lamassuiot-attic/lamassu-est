@@ -4,10 +4,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/globalsign/est"
-	"github.com/lamassuiot/lamassu-est/configs"
 	"io"
 	"os"
+
+	"github.com/lamassuiot/est"
+	"github.com/lamassuiot/lamassu-est/configs"
 )
 
 var (
@@ -43,7 +44,7 @@ func NewClient(config configs.ConfigClient) (*EstClient, error) {
 	return &estClient, nil
 }
 
-func (client *EstClient) GetCAs(caName string) ([]*x509.Certificate, error){
+func (client *EstClient) GetCAs(caName string) ([]*x509.Certificate, error) {
 	return getCaCerts(client, caName)
 }
 
