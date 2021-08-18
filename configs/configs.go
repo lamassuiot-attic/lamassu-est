@@ -46,6 +46,8 @@ type ConfigStrServer struct {
 	VaultRoleID   string
 	VaultSecretID string
 	VaultCA       string
+	
+	OcspUrl string
 }
 
 // NewConfigJson Wrapper for different configurations
