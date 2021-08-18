@@ -73,7 +73,7 @@ func NewServerCa(ca est.CA) (*http.Server, error) {
 		logger = level.NewFilter(logger, level.AllowInfo())
 	}
 
-	secretsVault, err := vault.NewVaultSecrets(configVault.VaultAddress, configVault.VaultRoleID, configVault.VaultSecretID, configVault.VaultCA, logger)
+	secretsVault, err := vault.NewVaultSecrets(configVault.VaultAddress, configVault.VaultRoleID, configVault.VaultSecretID, configVault.VaultCA, configVault.OcspUrl, configVault logger)
 	if err != nil {
 		return nil, err
 	}
