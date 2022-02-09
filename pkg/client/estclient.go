@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -18,7 +19,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/globalsign/pemfile"
 	"github.com/lamassuiot/lamassu-est/pkg/utils"
@@ -35,10 +36,10 @@ type LamassuEstClientConfig struct {
 }
 
 type LamassuEstClient interface {
-	CACerts() ([]*x509.Certificate, error)
-	Enroll(aps string, csr *x509.CertificateRequest) (*x509.Certificate, error)
-	Reenroll(csr *x509.CertificateRequest /*, crt *x509.Certificate*/) (*x509.Certificate, error)
-	ServerKeyGen(aps string, csr *x509.CertificateRequest) (*x509.Certificate, []byte, error)
+	CACerts(ctx context.Context) ([]*x509.Certificate, error)
+	Enroll(ctx context.Context, aps string, csr *x509.CertificateRequest) (*x509.Certificate, error)
+	Reenroll(ctx context.Context, csr *x509.CertificateRequest /*, crt *x509.Certificate*/) (*x509.Certificate, error)
+	ServerKeyGen(ctx context.Context, aps string, csr *x509.CertificateRequest) (*x509.Certificate, []byte, error)
 }
 
 func NewLamassuEstClient(estServerAddress string, estServerCaCertFile string, estClientCertificateFile string, estClientKeyFile string, logger log.Logger) (LamassuEstClient, error) {
@@ -95,17 +96,35 @@ func NewLamassuEstClient(estServerAddress string, estServerCaCertFile string, es
 		logger:                 logger,
 	}, nil
 }
-func (c *LamassuEstClientConfig) CACerts() ([]*x509.Certificate, error) {
-	req, err := c.Client.NewRequest(http.MethodGet, "/cacerts", c.EstServerAddress, "", "", "", "application/pkcs7-mime", nil)
+func (c *LamassuEstClientConfig) CACerts(ctx context.Context) ([]*x509.Certificate, error) {
+	c.logger = ctx.Value("LamassuLogger").(log.Logger)
+	var resp *http.Response
+	var body []byte
+	if ctx != nil {
+		parentSpan := opentracing.SpanFromContext(ctx)
+		span := opentracing.StartSpan("lamassu-dms: GetCACerts", opentracing.ChildOf(parentSpan.Context()))
+		span_id := fmt.Sprintf("%s", span)
+		req, err := c.Client.NewRequest(http.MethodGet, "/cacerts", c.EstServerAddress, "", "", "", "application/pkcs7-mime", nil)
+		req.Header.Set("uber-trace-id", span_id)
+		if err != nil {
+			return nil, err
+		}
 
-	if err != nil {
-		return nil, err
-	}
+		resp, body, err = c.Client.Do(req)
+		span.Finish()
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		}
+	} else {
+		req, err := c.Client.NewRequest(http.MethodGet, "/cacerts", c.EstServerAddress, "", "", "", "application/pkcs7-mime", nil)
+		if err != nil {
+			return nil, err
+		}
 
-	resp, b, err := c.Client.Do(req)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		resp, body, err = c.Client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		}
 	}
 
 	if err := checkResponseError(resp); err != nil {
@@ -116,7 +135,7 @@ func (c *LamassuEstClientConfig) CACerts() ([]*x509.Certificate, error) {
 		return nil, err
 	}
 
-	decoded, err := utils.Base64Decode(b)
+	decoded, err := utils.Base64Decode(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to base64-decode HTTP response body: %w", err)
 	}
@@ -129,18 +148,35 @@ func (c *LamassuEstClientConfig) CACerts() ([]*x509.Certificate, error) {
 
 }
 
-func (c *LamassuEstClientConfig) Enroll(aps string, csr *x509.CertificateRequest) (*x509.Certificate, error) {
-	level.Info(c.logger).Log("msg", aps)
+func (c *LamassuEstClientConfig) Enroll(ctx context.Context, aps string, csr *x509.CertificateRequest) (*x509.Certificate, error) {
 	reqBody := ioutil.NopCloser(bytes.NewBuffer(utils.Base64Encode(csr.Raw)))
+	var resp *http.Response
+	var body []byte
+	if ctx != nil {
+		parentSpan := opentracing.SpanFromContext(ctx)
+		span := opentracing.StartSpan("lamassu-dms: Enroll request", opentracing.ChildOf(parentSpan.Context()))
+		span_id := fmt.Sprintf("%s", span)
+		req, err := c.Client.NewRequest(http.MethodPost, "/simpleenroll", c.EstServerAddress, aps, "application/pkcs10", "base64", "application/pkcs7-mime", reqBody)
+		req.Header.Set("uber-trace-id", span_id)
+		if err != nil {
+			return nil, err
+		}
 
-	req, err := c.Client.NewRequest(http.MethodPost, "/simpleenroll", c.EstServerAddress, aps, "application/pkcs10", "base64", "application/pkcs7-mime", reqBody)
-	if err != nil {
-		return nil, err
-	}
+		resp, body, err = c.Client.Do(req)
+		span.Finish()
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		}
+	} else {
+		req, err := c.Client.NewRequest(http.MethodPost, "/simpleenroll", c.EstServerAddress, aps, "application/pkcs10", "base64", "application/pkcs7-mime", reqBody)
+		if err != nil {
+			return nil, err
+		}
 
-	resp, b, err := c.Client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		resp, body, err = c.Client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		}
 	}
 
 	if err := checkResponseError(resp); err != nil {
@@ -151,7 +187,7 @@ func (c *LamassuEstClientConfig) Enroll(aps string, csr *x509.CertificateRequest
 		return nil, err
 	}
 
-	decoded, err := utils.Base64Decode(b)
+	decoded, err := utils.Base64Decode(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to base64-decode HTTP response body: %w", err)
 	}
@@ -164,17 +200,36 @@ func (c *LamassuEstClientConfig) Enroll(aps string, csr *x509.CertificateRequest
 	return certs[0], nil
 }
 
-func (c *LamassuEstClientConfig) Reenroll(csr *x509.CertificateRequest /*, crt *x509.Certificate*/) (*x509.Certificate, error) {
+func (c *LamassuEstClientConfig) Reenroll(ctx context.Context, csr *x509.CertificateRequest /*, crt *x509.Certificate*/) (*x509.Certificate, error) {
 	reqBody := ioutil.NopCloser(bytes.NewBuffer(utils.Base64Encode(csr.Raw)))
+	var resp *http.Response
+	var body []byte
+	if ctx != nil {
+		parentSpan := opentracing.SpanFromContext(ctx)
+		span := opentracing.StartSpan("lamassu-dms: Reenroll request", opentracing.ChildOf(parentSpan.Context()))
+		span_id := fmt.Sprintf("%s", span)
 
-	req, err := c.Client.NewRequest(http.MethodPost, "/simplereenroll", c.EstServerAddress, "", "application/pkcs10", "base64", "application/pkcs7-mime", reqBody)
-	if err != nil {
-		return nil, err
-	}
+		req, err := c.Client.NewRequest(http.MethodPost, "/simplereenroll", c.EstServerAddress, "", "application/pkcs10", "base64", "application/pkcs7-mime", reqBody)
+		req.Header.Set("uber-trace-id", span_id)
+		if err != nil {
+			return nil, err
+		}
 
-	resp, b, err := c.Client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		resp, body, err = c.Client.Do(req)
+		span.Finish()
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		}
+	} else {
+		req, err := c.Client.NewRequest(http.MethodPost, "/simplereenroll", c.EstServerAddress, "", "application/pkcs10", "base64", "application/pkcs7-mime", reqBody)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, body, err = c.Client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		}
 	}
 
 	if err := checkResponseError(resp); err != nil {
@@ -185,7 +240,7 @@ func (c *LamassuEstClientConfig) Reenroll(csr *x509.CertificateRequest /*, crt *
 		return nil, err
 	}
 
-	decoded, err := utils.Base64Decode(b)
+	decoded, err := utils.Base64Decode(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to base64-decode HTTP response body: %w", err)
 	}
@@ -198,15 +253,34 @@ func (c *LamassuEstClientConfig) Reenroll(csr *x509.CertificateRequest /*, crt *
 	return certs[0], nil
 }
 
-func (c *LamassuEstClientConfig) ServerKeyGen(aps string, csr *x509.CertificateRequest) (*x509.Certificate, []byte, error) {
+func (c *LamassuEstClientConfig) ServerKeyGen(ctx context.Context, aps string, csr *x509.CertificateRequest) (*x509.Certificate, []byte, error) {
 	reqBody := ioutil.NopCloser(bytes.NewBuffer(utils.Base64Encode(csr.Raw)))
-	req, err := c.Client.NewRequest(http.MethodPost, "/serverkeygen", c.EstServerAddress, aps, "application/pkcs10", "base64", "multipart/mixed", reqBody)
-	if err != nil {
-		return nil, nil, err
-	}
-	resp, body, err := c.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+	var resp *http.Response
+	var body []byte
+	if ctx != nil {
+		parentSpan := opentracing.SpanFromContext(ctx)
+		span := opentracing.StartSpan("lamassu-dms: Server Key Gen request", opentracing.ChildOf(parentSpan.Context()))
+		span_id := fmt.Sprintf("%s", span)
+
+		req, err := c.Client.NewRequest(http.MethodPost, "/serverkeygen", c.EstServerAddress, aps, "application/pkcs10", "base64", "multipart/mixed", reqBody)
+		req.Header.Set("uber-trace-id", span_id)
+		if err != nil {
+			return nil, nil, err
+		}
+		resp, body, err = c.Client.Do(req)
+		span.Finish()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		}
+	} else {
+		req, err := c.Client.NewRequest(http.MethodPost, "/serverkeygen", c.EstServerAddress, aps, "application/pkcs10", "base64", "multipart/mixed", reqBody)
+		if err != nil {
+			return nil, nil, err
+		}
+		resp, body, err = c.Client.Do(req)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		}
 	}
 
 	decoded, err := utils.Base64Decode(body)
