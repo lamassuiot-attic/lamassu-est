@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/go-kit/kit/log"
-	lamassuca "github.com/lamassuiot/lamassu-ca/client"
+	lamassuca "github.com/lamassuiot/lamassu-ca/pkg/client"
 )
 
 type Service interface {
