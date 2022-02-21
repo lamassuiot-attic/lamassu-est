@@ -17,6 +17,14 @@ github.com/go-kit/log
 github.com/go-kit/log/level
 # github.com/go-logfmt/logfmt v0.5.1
 github.com/go-logfmt/logfmt
+# github.com/go-playground/locales v0.14.0
+github.com/go-playground/locales
+github.com/go-playground/locales/currency
+# github.com/go-playground/universal-translator v0.18.0
+github.com/go-playground/universal-translator
+# github.com/go-playground/validator/v10 v10.10.0
+## explicit
+github.com/go-playground/validator/v10
 # github.com/gorilla/mux v1.8.0
 ## explicit
 github.com/gorilla/mux
@@ -26,6 +34,8 @@ github.com/kelseyhightower/envconfig
 # github.com/lamassuiot/lamassu-ca v1.0.12
 ## explicit
 github.com/lamassuiot/lamassu-ca/pkg/client
+# github.com/leodido/go-urn v1.2.1
+github.com/leodido/go-urn
 # github.com/opentracing/opentracing-go v1.2.0
 ## explicit
 github.com/opentracing/opentracing-go
@@ -35,13 +45,20 @@ github.com/opentracing/opentracing-go/log
 ## explicit
 go.mozilla.org/pkcs7
 # golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+golang.org/x/crypto/sha3
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
+golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 golang.org/x/term
+# golang.org/x/text v0.3.7
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/language
 # google.golang.org/grpc v1.40.0
 google.golang.org/grpc/metadata

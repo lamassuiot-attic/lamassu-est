@@ -14,77 +14,13 @@ type estError struct {
 
 // Internal error values.
 var (
-	errAuthRequired = &estError{
-		status: http.StatusUnauthorized,
-		desc:   "authorization required",
-	}
-	errBodyParse = &estError{
-		status: http.StatusBadRequest,
-		desc:   "unable to parse request body",
-	}
-	errExtractPublicAreaKey = &estError{
-		status: http.StatusBadRequest,
-		desc:   "unable to extract public key from TPM object public area",
-	}
-	errHostNotAllowed = &estError{
-		status: http.StatusBadRequest,
-		desc:   "host not allowed",
-	}
-	errInternal = &estError{
-		status: http.StatusInternalServerError,
-		desc:   "internal server error",
-	}
 	errInvalidBase64 = &estError{
 		status: http.StatusBadRequest,
 		desc:   "invalid base64 encoding",
 	}
-	errInvalidClientCert = &estError{
-		status: http.StatusForbidden,
-		desc:   "invalid client certificate",
-	}
 	errInvalidPKCS7 = &estError{
 		status: http.StatusBadRequest,
 		desc:   "malformed PKCS7 structure",
-	}
-	errInvalidPKCS10 = &estError{
-		status: http.StatusBadRequest,
-		desc:   "malformed PKCS10 certificate signing request",
-	}
-	errInvalidPKCS10Signature = &estError{
-		status: http.StatusBadRequest,
-		desc:   "invalid PKCS10 certificate signing request signature",
-	}
-	errInvalidTPMPublicArea = &estError{
-		status: http.StatusBadRequest,
-		desc:   "malformed TPM object public area",
-	}
-	errMalformedCert = &estError{
-		status: http.StatusBadRequest,
-		desc:   "malformed certificate",
-	}
-	errNoCertificatesInPKCS7 = &estError{
-		status: http.StatusBadRequest,
-		desc:   "no certificates found in PKCS7 structure",
-	}
-	errNoClientCertificate = &estError{
-		status: http.StatusForbidden,
-		desc:   "client certificate must be provided for /simplereenroll",
-	}
-	errRateLimitExceeded = &estError{
-		status: http.StatusTooManyRequests,
-		desc:   "rate limit exceeded",
-	}
-	errSubjectChanged = &estError{
-		status: http.StatusForbidden,
-		desc:   "Subject and SubjectAltName fields in CSR must be identical to certificate being renewed",
-	}
-	errTPMPublicAreaFlags = &estError{
-		status: http.StatusUnprocessableEntity,
-		desc:   "EK is not a storage key",
-	}
-	errTPMPublicKeyNoMatch = &estError{
-		status: http.StatusUnprocessableEntity,
-		desc:   "public key in public area doesn't match",
 	}
 )
 

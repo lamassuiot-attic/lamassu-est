@@ -1,9 +1,8 @@
-package api
+package service
 
 import (
 	"context"
 	"crypto/x509"
-	"errors"
 	"net/http"
 	"sync"
 
@@ -42,18 +41,6 @@ type Service interface {
 	// key.
 	//TPMEnroll(ctx context.Context, csr *x509.CertificateRequest, ekcerts []*x509.Certificate, ekPub, akPub []byte, aps string, r *http.Request) ([]byte, []byte, []byte, error)
 }
-
-var (
-	// Client errors
-	ErrIncorrectType       = errors.New("unsupported media type")        //415
-	ErrEmptyBody           = errors.New("empty body")                    //400
-	ErrInvalidBase64       = errors.New("content not in base64")         //400
-	ErrInvalidPKCS10       = errors.New("content not encoded in pkcs10") //400
-	ErrSubjectChanged      = errors.New("different Subject fields")      //400
-	ErrNoClientCertificate = errors.New("no Client Certificate")         //400
-	ErrInvalidAPS          = errors.New("invalid APS name")
-	//Server errors
-)
 
 type estService struct {
 	mtx             sync.RWMutex

@@ -97,7 +97,6 @@ func NewLamassuEstClient(estServerAddress string, estServerCaCertFile string, es
 	}, nil
 }
 func (c *LamassuEstClientConfig) CACerts(ctx context.Context) ([]*x509.Certificate, error) {
-	c.logger = ctx.Value("LamassuLogger").(log.Logger)
 	var resp *http.Response
 	var body []byte
 	if ctx != nil {
@@ -113,7 +112,7 @@ func (c *LamassuEstClientConfig) CACerts(ctx context.Context) ([]*x509.Certifica
 		resp, body, err = c.Client.Do(req)
 		span.Finish()
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+			return nil, err
 		}
 	} else {
 		req, err := c.Client.NewRequest(http.MethodGet, "/cacerts", c.EstServerAddress, "", "", "", "application/pkcs7-mime", nil)
@@ -123,7 +122,7 @@ func (c *LamassuEstClientConfig) CACerts(ctx context.Context) ([]*x509.Certifica
 
 		resp, body, err = c.Client.Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+			return nil, err
 		}
 	}
 
@@ -137,12 +136,12 @@ func (c *LamassuEstClientConfig) CACerts(ctx context.Context) ([]*x509.Certifica
 
 	decoded, err := utils.Base64Decode(body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to base64-decode HTTP response body: %w", err)
+		return nil, errInvalidBase64
 	}
 
 	p7, err := pkcs7.Parse(decoded)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode PKCS7 : %w", err)
+		return nil, errInvalidPKCS7
 	}
 	return p7.Certificates, nil
 
@@ -165,7 +164,7 @@ func (c *LamassuEstClientConfig) Enroll(ctx context.Context, aps string, csr *x5
 		resp, body, err = c.Client.Do(req)
 		span.Finish()
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+			return nil, err
 		}
 	} else {
 		req, err := c.Client.NewRequest(http.MethodPost, "/simpleenroll", c.EstServerAddress, aps, "application/pkcs10", "base64", "application/pkcs7-mime", reqBody)
@@ -175,7 +174,7 @@ func (c *LamassuEstClientConfig) Enroll(ctx context.Context, aps string, csr *x5
 
 		resp, body, err = c.Client.Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+			return nil, err
 		}
 	}
 
@@ -189,12 +188,12 @@ func (c *LamassuEstClientConfig) Enroll(ctx context.Context, aps string, csr *x5
 
 	decoded, err := utils.Base64Decode(body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to base64-decode HTTP response body: %w", err)
+		return nil, errInvalidBase64
 	}
 
 	certs, err := utils.DecodePKCS7CertsOnly(decoded)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode PKCS7: %w", err)
+		return nil, errInvalidPKCS7
 	}
 
 	return certs[0], nil
@@ -218,7 +217,7 @@ func (c *LamassuEstClientConfig) Reenroll(ctx context.Context, csr *x509.Certifi
 		resp, body, err = c.Client.Do(req)
 		span.Finish()
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+			return nil, err
 		}
 	} else {
 		req, err := c.Client.NewRequest(http.MethodPost, "/simplereenroll", c.EstServerAddress, "", "application/pkcs10", "base64", "application/pkcs7-mime", reqBody)
@@ -228,7 +227,7 @@ func (c *LamassuEstClientConfig) Reenroll(ctx context.Context, csr *x509.Certifi
 
 		resp, body, err = c.Client.Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+			return nil, err
 		}
 	}
 
@@ -242,12 +241,12 @@ func (c *LamassuEstClientConfig) Reenroll(ctx context.Context, csr *x509.Certifi
 
 	decoded, err := utils.Base64Decode(body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to base64-decode HTTP response body: %w", err)
+		return nil, errInvalidBase64
 	}
 
 	certs, err := utils.DecodePKCS7CertsOnly(decoded)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode PKCS7: %w", err)
+		return nil, errInvalidPKCS7
 	}
 
 	return certs[0], nil
@@ -270,7 +269,7 @@ func (c *LamassuEstClientConfig) ServerKeyGen(ctx context.Context, aps string, c
 		resp, body, err = c.Client.Do(req)
 		span.Finish()
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+			return nil, nil, err
 		}
 	} else {
 		req, err := c.Client.NewRequest(http.MethodPost, "/serverkeygen", c.EstServerAddress, aps, "application/pkcs10", "base64", "multipart/mixed", reqBody)
@@ -279,13 +278,13 @@ func (c *LamassuEstClientConfig) ServerKeyGen(ctx context.Context, aps string, c
 		}
 		resp, body, err = c.Client.Do(req)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+			return nil, nil, err
 		}
 	}
 
 	decoded, err := utils.Base64Decode(body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to base64-decode HTTP response body: %w", err)
+		return nil, nil, errInvalidBase64
 	}
 
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(decoded))
@@ -295,9 +294,9 @@ func (c *LamassuEstClientConfig) ServerKeyGen(ctx context.Context, aps string, c
 
 	mediaType, params, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil {
-		return nil, nil, fmt.Errorf("missing or malformed %s header: %w", "Content-Type", err)
+		return nil, nil, err
 	} else if !strings.HasPrefix(mediaType, "multipart/mixed") {
-		return nil, nil, fmt.Errorf("unexpected %s: %s", "Content-Type", mediaType)
+		return nil, nil, err
 	}
 
 	mpr := multipart.NewReader(resp.Body, params["boundary"])
@@ -359,20 +358,20 @@ func checkResponseError(r *http.Response) error {
 func verifyResponseType(r *http.Response, t, e string) error {
 	ctype, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
-		return fmt.Errorf("missing or malformed %s header: %w", "Content-Type", err)
+		return err
 	}
 
 	if !strings.HasPrefix(ctype, t) {
-		return fmt.Errorf("unexpected %s: %s", "Content-Type", ctype)
+		return errors.New("unexpected Content-Type:" + ctype)
 	}
 
 	cenc := r.Header.Get("Content-Transfer-Encoding")
 	if cenc == "" {
-		return fmt.Errorf("missing %s header", "Content-Transfer-Encoding")
+		return errors.New("missing Content-Transfer-Encoding header")
 	}
 
 	if strings.ToUpper(cenc) != strings.ToUpper(e) {
-		return fmt.Errorf("unexpected %s: %s", "Content-Transfer-Encoding", cenc)
+		return errors.New("unexpected Content-Transfer-Encoding: " + cenc)
 	}
 
 	return nil
@@ -386,29 +385,29 @@ func ProcessAllParts(mpr *multipart.Reader) (*x509.Certificate, []byte, error) {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return nil, nil, fmt.Errorf("failed to read HTTP response part: %w", err)
+			return nil, nil, err
 		}
 		defer part.Close()
 		if i > numParts {
-			return nil, nil, fmt.Errorf("more than %d parts in HTTP response", numParts)
+			return nil, nil, errors.New("more than" + string(numParts) + "parts in HTTP response")
 		}
 
 		if ce := part.Header.Get("Content-Transfer-Encoding"); ce == "" {
-			return nil, nil, fmt.Errorf("missing %s header", "Content-Transfer-Encoding")
+			return nil, nil, errors.New("missing Content-Transfer-Encoding header")
 		} else if strings.ToUpper(ce) != strings.ToUpper("base64") {
-			return nil, nil, fmt.Errorf("unexpected %s: %s", "Content-Transfer-Encoding", ce)
+			return nil, nil, errors.New("unexpected Content-Transfer-Encoding: " + ce)
 		}
 
 		mediaType, params, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
 		if err != nil {
-			return nil, nil, fmt.Errorf("missing or malformed %s header: %w", "Content-Type", err)
+			return nil, nil, err
 		}
 
 		switch {
 		case strings.HasPrefix(mediaType, "application/pkcs8"):
 			key, err = utils.ReadAllBase64Response(part)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to read HTTP response part: %w", err)
+				return nil, nil, err
 			}
 
 		case strings.HasPrefix(mediaType, "application/pkcs7-mime"):
@@ -418,7 +417,7 @@ func ProcessAllParts(mpr *multipart.Reader) (*x509.Certificate, []byte, error) {
 			case "server-generated-key":
 				key, err = utils.ReadAllBase64Response(part)
 				if err != nil {
-					return nil, nil, fmt.Errorf("failed to read HTTP response part: %w", err)
+					return nil, nil, err
 				}
 
 			case "certs-only":
@@ -428,12 +427,12 @@ func ProcessAllParts(mpr *multipart.Reader) (*x509.Certificate, []byte, error) {
 				}
 
 			default:
-				return nil, nil, fmt.Errorf("unexpected %s: %s", "smime-type", t)
+				return nil, nil, err
 
 			}
 
 		default:
-			return nil, nil, fmt.Errorf("unexpected %s: %s", "Content-Type", mediaType)
+			return nil, nil, errors.New("unexpected Content Type:" + mediaType)
 		}
 	}
 

@@ -8,6 +8,7 @@ require (
 	github.com/globalsign/pemfile v1.0.0
 	github.com/go-kit/kit v0.12.0
 	github.com/go-kit/log v0.2.0
+	github.com/go-playground/validator/v10 v10.10.0
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lamassuiot/lamassu-ca v1.0.12

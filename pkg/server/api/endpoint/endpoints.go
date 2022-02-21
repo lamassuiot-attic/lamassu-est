@@ -1,4 +1,4 @@
-package api
+package endpoint
 
 import (
 	"context"
@@ -6,6 +6,9 @@ import (
 
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/tracing/opentracing"
+	"github.com/go-playground/validator/v10"
+	esterror "github.com/lamassuiot/lamassu-est/pkg/server/api/errors"
+	"github.com/lamassuiot/lamassu-est/pkg/server/api/service"
 	stdopentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -17,7 +20,7 @@ type Endpoints struct {
 	ServerKeyGenEndpoint endpoint.Endpoint
 }
 
-func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
+func MakeServerEndpoints(s service.Service, otTracer stdopentracing.Tracer) Endpoints {
 	var healthEndpoint endpoint.Endpoint
 	{
 		healthEndpoint = MakeHealthEndpoint(s)
@@ -55,40 +58,61 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 	}
 }
 
-func MakeHealthEndpoint(s Service) endpoint.Endpoint {
+func MakeHealthEndpoint(s service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		healthy := s.Health(ctx)
 		return HealthResponse{Healthy: healthy}, nil
 	}
 }
 
-func MakeGetCAsEndpoint(s Service) endpoint.Endpoint {
+func MakeGetCAsEndpoint(s service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		cas, err := s.CACerts(ctx, "", nil)
 		return GetCasResponse{Certs: cas}, err
 	}
 }
 
-func MakeEnrollEndpoint(s Service) endpoint.Endpoint {
+func MakeEnrollEndpoint(s service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(EnrollRequest)
-		cas, err := s.Enroll(ctx, req.csr, req.aps, req.crt, nil)
+		err = ValidatetEnrollRequest(req)
+		if err != nil {
+			valError := esterror.ValidationError{
+				Msg: err.Error(),
+			}
+			return nil, &valError
+		}
+		cas, err := s.Enroll(ctx, req.Csr, req.Aps, req.Crt, nil)
 		return EnrollReenrollResponse{Cert: cas}, err
 	}
 }
 
-func MakeReenrollEndpoint(s Service) endpoint.Endpoint {
+func MakeReenrollEndpoint(s service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(ReenrollRequest)
-		cas, err := s.Reenroll(ctx, req.crt, req.csr, "", nil)
+		err = ValidatetReenrollRequest(req)
+		if err != nil {
+			valError := esterror.ValidationError{
+				Msg: err.Error(),
+			}
+			return nil, &valError
+		}
+		cas, err := s.Reenroll(ctx, req.Crt, req.Csr, "", nil)
 		return EnrollReenrollResponse{Cert: cas}, err
 	}
 }
 
-func MakeServerKeyGenEndpoint(s Service) endpoint.Endpoint {
+func MakeServerKeyGenEndpoint(s service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(ServerKeyGenRequest)
-		cas, key, err := s.ServerKeyGen(ctx, req.csr, req.aps, nil)
+		err = ValidateServerKeyGenRequest(req)
+		if err != nil {
+			valError := esterror.ValidationError{
+				Msg: err.Error(),
+			}
+			return nil, &valError
+		}
+		cas, key, err := s.ServerKeyGen(ctx, req.Csr, req.Aps, nil)
 		return ServerKeyGenResponse{Cert: cas, Key: key}, err
 	}
 }
@@ -96,18 +120,34 @@ func MakeServerKeyGenEndpoint(s Service) endpoint.Endpoint {
 type EmptyRequest struct{}
 
 type EnrollRequest struct {
-	csr *x509.CertificateRequest
-	aps string
-	crt *x509.Certificate
+	Csr *x509.CertificateRequest `validate:"required"`
+	Aps string                   `validate:"required"`
+	Crt *x509.Certificate        `validate:"required"`
+}
+
+func ValidatetEnrollRequest(request EnrollRequest) error {
+	validate := validator.New()
+	return validate.Struct(request)
 }
 
 type ReenrollRequest struct {
-	csr *x509.CertificateRequest
-	crt *x509.Certificate
+	Csr *x509.CertificateRequest `validate:"required"`
+	Crt *x509.Certificate        `validate:"required"`
 }
+
+func ValidatetReenrollRequest(request ReenrollRequest) error {
+	validate := validator.New()
+	return validate.Struct(request)
+}
+
 type ServerKeyGenRequest struct {
-	csr *x509.CertificateRequest
-	aps string
+	Csr *x509.CertificateRequest `validate:"required"`
+	Aps string                   `validate:"required"`
+}
+
+func ValidateServerKeyGenRequest(request ServerKeyGenRequest) error {
+	validate := validator.New()
+	return validate.Struct(request)
 }
 
 type HealthResponse struct {

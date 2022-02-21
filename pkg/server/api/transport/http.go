@@ -1,4 +1,4 @@
-package api
+package transport
 
 import (
 	"context"
@@ -13,10 +13,12 @@ import (
 	"github.com/go-kit/kit/tracing/opentracing"
 	"github.com/go-kit/kit/transport"
 	httptransport "github.com/go-kit/kit/transport/http"
-	"github.com/lamassuiot/lamassu-est/pkg/server/api/mtls"
-	"github.com/lamassuiot/lamassu-est/pkg/utils"
-
 	"github.com/gorilla/mux"
+	"github.com/lamassuiot/lamassu-est/pkg/server/api/endpoint"
+	esterror "github.com/lamassuiot/lamassu-est/pkg/server/api/errors"
+	"github.com/lamassuiot/lamassu-est/pkg/server/api/mtls"
+	"github.com/lamassuiot/lamassu-est/pkg/server/api/service"
+	"github.com/lamassuiot/lamassu-est/pkg/utils"
 	stdopentracing "github.com/opentracing/opentracing-go"
 	"go.mozilla.org/pkcs7"
 )
@@ -24,22 +26,47 @@ import (
 type errorer interface {
 	error() error
 }
-type contextKey string
 
-const (
-	LamassuLoggerContextkey contextKey = "LamassuLogger"
-)
-
+func ErrMissingAPS() error {
+	return &esterror.GenericError{
+		Message:    "APS name not specified",
+		StatusCode: 400,
+	}
+}
+func ErrNoClientCert() error {
+	return &esterror.GenericError{
+		Message:    "client certificate must be provided",
+		StatusCode: http.StatusForbidden,
+	}
+}
+func ErrContentType() error {
+	return &esterror.GenericError{
+		Message:    "The content type is not correct",
+		StatusCode: 400,
+	}
+}
+func ErrInvalidBase64() error {
+	return &esterror.GenericError{
+		Message:    "invalid base64 encoding",
+		StatusCode: http.StatusBadRequest,
+	}
+}
+func ErrMalformedCert() error {
+	return &esterror.GenericError{
+		Message:    "malformed certificate",
+		StatusCode: http.StatusBadRequest,
+	}
+}
 func HTTPToContext(logger log.Logger) httptransport.RequestFunc {
 	return func(ctx context.Context, req *http.Request) context.Context {
 		// Try to join to a trace propagated in `req`.
 		logger := log.With(logger, "span_id", stdopentracing.SpanFromContext(ctx))
-		return context.WithValue(ctx, LamassuLoggerContextkey, logger)
+		return context.WithValue(ctx, utils.LamassuLoggerContextKey, logger)
 	}
 }
-func MakeHTTPHandler(service Service, logger log.Logger, otTracer stdopentracing.Tracer) http.Handler {
+func MakeHTTPHandler(service service.Service, logger log.Logger, otTracer stdopentracing.Tracer) http.Handler {
 	router := mux.NewRouter()
-	endpoints := MakeServerEndpoints(service, otTracer)
+	endpoints := endpoint.MakeServerEndpoints(service, otTracer)
 
 	options := []httptransport.ServerOption{
 		httptransport.ServerBefore(HTTPToContext(logger)),
@@ -99,7 +126,7 @@ func MakeHTTPHandler(service Service, logger log.Logger, otTracer stdopentracing
 }
 
 func DecodeRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
-	var req EmptyRequest
+	var req endpoint.EmptyRequest
 	return req, nil
 }
 
@@ -108,25 +135,28 @@ func DecodeEnrollRequest(ctx context.Context, r *http.Request) (request interfac
 	aps, ok := vars["aps"]
 
 	if !ok {
-		return nil, ErrInvalidAPS
+		return nil, ErrMissingAPS()
 	}
 
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/pkcs10" {
-		return nil, ErrIncorrectType
+		return nil, ErrContentType()
 	}
 
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, ErrEmptyBody
+		return nil, err
 	}
 
 	decodedCsr, err := utils.Base64Decode(data)
 	if err != nil {
-		return nil, ErrInvalidBase64
+		return nil, ErrInvalidBase64()
 	}
 
-	csr, _ := x509.ParseCertificateRequest(decodedCsr)
+	csr, err := x509.ParseCertificateRequest(decodedCsr)
+	if err != nil {
+		return nil, ErrMalformedCert()
+	}
 
 	ClientCert := r.Header.Get("X-Forwarded-Client-Cert")
 
@@ -139,49 +169,51 @@ func DecodeEnrollRequest(ctx context.Context, r *http.Request) (request interfac
 
 		block, _ := pem.Decode([]byte(decodedCert))
 
-		certificate, _ := x509.ParseCertificate(block.Bytes)
-		req := EnrollRequest{
-			csr: csr,
-			crt: certificate,
-			aps: aps,
+		certificate, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, ErrMalformedCert()
+		}
+		req := endpoint.EnrollRequest{
+			Csr: csr,
+			Crt: certificate,
+			Aps: aps,
 		}
 		return req, nil
 
 	} else if len(r.TLS.PeerCertificates) != 0 {
 		cert := r.TLS.PeerCertificates[0]
 
-		req := EnrollRequest{
-			csr: csr,
-			crt: cert,
-			aps: aps,
+		req := endpoint.EnrollRequest{
+			Csr: csr,
+			Crt: cert,
+			Aps: aps,
 		}
 		return req, nil
 
 	} else {
-		return nil, ErrNoClientCertificate
+		return nil, ErrNoClientCert()
 	}
 }
 
 func DecodeReenrollRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/pkcs10" {
-		return nil, ErrIncorrectType
+		return nil, ErrContentType()
 	}
-	/*certContent, err := ioutil.ReadFile("/home/ikerlan/tmp/device1.crt")
-	cpb, _ := pem.Decode(certContent)
-
-	crt, err := x509.ParseCertificate(cpb.Bytes)*/
 	data, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
-		return nil, ErrEmptyBody
+		return nil, err
 	}
 
 	decodedCsr, err := utils.Base64Decode(data)
 	if err != nil {
-		return nil, ErrInvalidBase64
+		return nil, ErrInvalidBase64()
 	}
-	csr, _ := x509.ParseCertificateRequest(decodedCsr)
+	csr, err := x509.ParseCertificateRequest(decodedCsr)
+	if err != nil {
+		return nil, ErrMalformedCert()
+	}
 
 	ClientCert := r.Header.Get("X-Forwarded-Client-Cert")
 	if len(ClientCert) != 0 {
@@ -193,25 +225,29 @@ func DecodeReenrollRequest(ctx context.Context, r *http.Request) (request interf
 
 		block, _ := pem.Decode([]byte(decodedCert))
 
-		certificate, _ := x509.ParseCertificate(block.Bytes)
+		certificate, err := x509.ParseCertificate(block.Bytes)
 
-		req := ReenrollRequest{
-			csr: csr,
-			crt: certificate,
+		if err != nil {
+			return nil, ErrMalformedCert()
+		}
+
+		req := endpoint.ReenrollRequest{
+			Csr: csr,
+			Crt: certificate,
 		}
 		return req, nil
 
 	} else if len(r.TLS.PeerCertificates) != 0 {
 		cert := r.TLS.PeerCertificates[0]
 
-		req := ReenrollRequest{
-			csr: csr,
-			crt: cert,
+		req := endpoint.ReenrollRequest{
+			Csr: csr,
+			Crt: cert,
 		}
 		return req, nil
 
 	} else {
-		return nil, ErrNoClientCertificate
+		return nil, ErrNoClientCert()
 	}
 
 }
@@ -221,28 +257,30 @@ func DecodeServerkeygenRequest(ctx context.Context, r *http.Request) (request in
 	aps, ok := vars["aps"]
 
 	if !ok {
-		return nil, ErrInvalidAPS
+		return nil, ErrMissingAPS()
 	}
 
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/pkcs10" {
-		return nil, ErrIncorrectType
+		return nil, ErrContentType()
 	}
 	data, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
-		return nil, ErrEmptyBody
+		return nil, err
 	}
 
 	decodedCsr, err := utils.Base64Decode(data)
 	if err != nil {
-		return nil, ErrInvalidBase64
+		return nil, ErrInvalidBase64()
 	}
-	csr, _ := x509.ParseCertificateRequest(decodedCsr)
-
-	req := ServerKeyGenRequest{
-		csr: csr,
-		aps: aps,
+	csr, err := x509.ParseCertificateRequest(decodedCsr)
+	if err != nil {
+		return nil, ErrMalformedCert()
+	}
+	req := endpoint.ServerKeyGenRequest{
+		Csr: csr,
+		Aps: aps,
 	}
 	return req, nil
 
@@ -255,7 +293,7 @@ func EncodeServerkeygenResponse(ctx context.Context, w http.ResponseWriter, resp
 		EncodeError(ctx, e.error(), w)
 		return nil
 	}
-	Serverkeygenresponse := response.(ServerKeyGenResponse)
+	Serverkeygenresponse := response.(endpoint.ServerKeyGenResponse)
 	key := Serverkeygenresponse.Key
 	cert := Serverkeygenresponse.Cert
 	var keyContentType string
@@ -296,7 +334,7 @@ func EncodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 		EncodeError(ctx, e.error(), w)
 		return nil
 	}
-	enrollResponse := response.(EnrollReenrollResponse)
+	enrollResponse := response.(endpoint.EnrollReenrollResponse)
 	cert := enrollResponse.Cert
 	var cb []byte
 	cb = append(cb, cert.Raw...)
@@ -322,7 +360,7 @@ func EncodeGetCaCertsResponse(ctx context.Context, w http.ResponseWriter, respon
 		EncodeError(ctx, e.error(), w)
 		return nil
 	}
-	getCAsResponse := response.(GetCasResponse)
+	getCAsResponse := response.(endpoint.GetCasResponse)
 	var cb []byte
 	for _, cert := range getCAsResponse.Certs {
 		cb = append(cb, cert.Raw...)
@@ -352,7 +390,11 @@ func EncodeError(_ context.Context, err error, w http.ResponseWriter) {
 }
 
 func codeFrom(err error) int {
-	switch err {
+	switch e := err.(type) {
+	case *esterror.ValidationError:
+		return http.StatusBadRequest
+	case *esterror.GenericError:
+		return e.StatusCode
 	default:
 		return http.StatusInternalServerError
 	}
