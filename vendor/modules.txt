@@ -5,7 +5,6 @@ github.com/globalsign/pemfile
 ## explicit
 github.com/go-kit/kit/endpoint
 github.com/go-kit/kit/log
-github.com/go-kit/kit/log/level
 github.com/go-kit/kit/sd
 github.com/go-kit/kit/sd/lb
 github.com/go-kit/kit/tracing/opentracing
@@ -31,7 +30,7 @@ github.com/gorilla/mux
 # github.com/kelseyhightower/envconfig v1.4.0
 ## explicit
 github.com/kelseyhightower/envconfig
-# github.com/lamassuiot/lamassu-ca v1.0.12
+# github.com/lamassuiot/lamassu-ca v1.0.13
 ## explicit
 github.com/lamassuiot/lamassu-ca/pkg/client
 # github.com/leodido/go-urn v1.2.1
