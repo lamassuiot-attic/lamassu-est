@@ -62,7 +62,7 @@ func NewLamassuEstClient(estServerAddress string, estServerCaCertFile string, es
 	if err != nil {
 		return nil, err
 	}
-	privateKey, err := pemfile.ReadPrivateKeyWithPasswordFunc(estClientKeyFile, nil)
+	privateKey, err := pemfile.ReadPrivateKey(estClientKeyFile)
 	if err != nil {
 		return nil, err
 	}
